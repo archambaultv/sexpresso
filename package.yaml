@@ -1,0 +1,47 @@
+name:                sexpresso
+version:             0.1.0.0
+github:              "archambaultv/sexpresso"
+license:             0BSD
+author:              "Vincent Archambault-Bouffard"
+maintainer:          "archambault.v@gmail.com"
+copyright:           "Vincent Archambault-Bouffard"
+
+extra-source-files:
+- README.md
+- ChangeLog.md
+
+# Metadata used when publishing your package
+synopsis:            A small but flexible library for parsing and printing S-expression
+category:            Data
+
+# To avoid duplicated efforts in documentation and dealing with the
+# complications of embedding Haddock markup inside cabal files, it is
+# common to point users to the README.md file.
+description:         Please see the README on GitHub at <https://github.com/archambaultv/sexpresso#readme>
+
+dependencies:
+- base >= 4.7 && < 5
+- text
+- megaparsec
+- containers
+
+library:
+  source-dirs: src
+
+tests:
+  sexpresso-test:
+    main:                Spec.hs
+    source-dirs:         test
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - sexpresso
+    - tasty
+    - tasty-hunit
+    - tasty-smallcheck
+    - smallcheck
+
+ghc-options:
+- -Wall
