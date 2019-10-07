@@ -5,7 +5,6 @@ module Parse.Char_Unittests (
 import Data.Void
 import Data.Either
 import Data.Bifunctor (first)
---import qualified Data.Text as T
 import Test.Tasty
 import Test.Tasty.HUnit
 import Text.Megaparsec as M
