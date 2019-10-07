@@ -21,13 +21,6 @@ import Text.Megaparsec
 import Data.SExpresso.SExpr
 
 ------------------------- Generic SExpression parser -------------------------
--- data SExprParserT e s m c b a = SExprParserT {
---   pSTag :: ParsecT e s m c,
---   pETag :: c -> ParsecT e s m b,
---   pAtom :: ParsecT e s m a,
---   pInterAtom :: ParsecT e s m ()
---   }
-
 data SpaceRule = SMandatory | SOptional
    deriving (Show, Eq)
 
@@ -94,38 +87,6 @@ parseSExprList def = do
           xs <- sepEndBy' (parseSExpr def) (pSpace def) (spaceRule def)
           b <- pETag def c
           return $ SList b xs
-
-          
-   --        _ <- optional (pSpace def)
-   --        mx <- optional (parseSExpr def)
-   --        case mx of
-   --          Nothing -> pETag def c >>= \b -> return (SList b [])
-   --          Just x -> do
-   --            xs <- parseContent x
-   --            b <- pETag def c
-   --            return (SList b (x : xs))
-
-   -- where --parseContent :: (MonadParsec e s m) => (SExpr b a) -> m [SExpr b a]
-   --       parseContent a1 = do
-   --         s <- maybe False (const True) <$> optional (pSpace def)
-   --         --pos <- getSourcePos
-   --         mx <- optional (parseSExpr def)
-   --         case mx of
-   --           Nothing -> return []
-   --           Just a2 ->
-   --             if spaceIsOK (spaceRule def) a1 a2 s
-   --             then do
-   --               xs <- parseContent a2
-   --               return $ a2 : xs
-   --             else fail "Space is not optional"
-          
-          -- xs <- (pAtom def >> return . SAtom <* (pSpace def <|> pDelimiter)
-          --       (parseSExprList def <* optional (pSpace def)
-          
-          -- _ <- optional (pSpace def)
-          -- xs <- sepEndBy (parseSExpr def) (pSpace def)
-          -- b <- pETag def c
-          -- return $ SList b xs
 
 parseSExpr :: (MonadParsec e s m) =>
               SExprParser m c b a -> m (SExpr b a)
