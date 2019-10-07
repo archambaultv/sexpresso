@@ -92,14 +92,12 @@ parseSExpr :: (MonadParsec e s m) =>
               SExprParser m c b a -> m (SExpr b a)
 parseSExpr def = (pAtom def >>= return . SAtom) <|> (parseSExprList def)
 
-decodeOne :: (MonadParsec e s m) =>
-              Maybe (m ()) -> SExprParser m c b a -> m (SExpr b a)
-decodeOne pBetweenSExpr def =
-  let ws = fromMaybe (pSpace def) pBetweenSExpr
+decodeOne :: (MonadParsec e s m) => SExprParser m c b a -> m (SExpr b a)
+decodeOne def =
+  let ws = pSpace def
   in optional ws *> parseSExpr def <* (optional ws >> eof)
 
-decode :: (MonadParsec e s m) =>
-           Maybe (m ()) -> SExprParser m c b a -> m [SExpr b a]
-decode pBetweenSExpr def =
-  let ws = fromMaybe (pSpace def) pBetweenSExpr
+decode :: (MonadParsec e s m) => SExprParser m c b a -> m [SExpr b a]
+decode def =
+  let ws = pSpace def
   in optional ws *> sepEndBy' (parseSExpr def) ws (spaceRule def) <* eof

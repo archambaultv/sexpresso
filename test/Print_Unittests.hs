@@ -47,6 +47,6 @@ printTestTree = testGroup "Print.hs unit tests" $
       testCase "SList 3/3" $ flatPrint printer (SList () [SList () [SAtom 1], SAtom 2, SList () [SAtom 3]] :: Sexp) @?= "((1) 2 (3))",
       testCase "SAtom" $ flatPrint printer (SAtom 3 :: Sexp) @?= "3",
       SC.testProperty "decodeOne inverse of flatPrint" $
-      \s -> parse (decodeOne Nothing sexpParser) "" (flatPrint printer (s :: Sexp)) == Right s
+      \s -> parse (decodeOne sexpParser) "" (flatPrint printer (s :: Sexp)) == Right s
       ]
   ]

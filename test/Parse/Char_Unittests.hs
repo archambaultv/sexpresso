@@ -9,8 +9,6 @@ import Test.Tasty
 import Test.Tasty.HUnit
 import Text.Megaparsec as M
 import Text.Megaparsec.Char
---import Test.Tasty.SmallCheck as SC
--- import Test.SmallCheck.Series
 import Data.SExpresso.SExpr
 import Data.SExpresso.Parse
 
@@ -32,13 +30,13 @@ pSExpr :: Parser (SExpr () String)
 pSExpr = parseSExpr sexpParser
 
 pDecodeOne :: Parser (SExpr () String)
-pDecodeOne = decodeOne Nothing sexpParser
+pDecodeOne = decodeOne sexpParser
 
 pDecode :: Parser [SExpr () String]
-pDecode = decode Nothing sexpParser
+pDecode = decode sexpParser
 
 pOptionalSpace :: Parser (SExpr () String)
-pOptionalSpace = decodeOne Nothing  $ setSpaceRule spaceIsOptional sexpParser
+pOptionalSpace = decodeOne $ setSpaceRule spaceIsOptional sexpParser
 
 charTestTree :: TestTree
 charTestTree = testGroup "Parse/Generic.hs & Parse/Char.hs unit tests" $
