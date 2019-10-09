@@ -6,13 +6,8 @@ module Data.SExpresso.Parse
     Located(..),
     located,
 
-    SExprParser,
+    SExprParser(..),
     SpacingRule(..),
-    pSTag,
-    pETag,
-    pAtom,
-    pSpace,
-    pSpacingRule,
 
     mkSExprParser,
     spaceIsMandatory,

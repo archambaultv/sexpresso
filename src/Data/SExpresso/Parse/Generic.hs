@@ -1,16 +1,13 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ExistentialQuantification #-}
 
 module Data.SExpresso.Parse.Generic
   (
-    SExprParser,
-    pSTag,
-    pETag,
-    pAtom,
-    pSpace,
-    pSpacingRule,
+    SExprParser(..),
     mkSExprParser,
     SpacingRule(..),
     setTags,
+    setTagsFromList,
     spaceIsMandatory,
     spaceIsOptional,
     setSpace,
@@ -35,9 +32,6 @@ import Data.SExpresso.Parse.Location
 data SpacingRule = SMandatory | SOptional
    deriving (Show, Eq)
 
--- pBetweenAtom must parse zero or more whitespace
--- In the case of zero whitespace, pBetweenAtom must
--- ensure that the next token is a valid delimiter
 data SExprParser m c b a = SExprParser {
   pSTag :: m c,
   pETag :: c -> m b,
@@ -45,6 +39,7 @@ data SExprParser m c b a = SExprParser {
   pSpace :: m (), --A parser for space characters which does not accept empty input (e.g. Megaparsec space1)
   pSpacingRule :: a -> a -> SpacingRule -- A function to tell if two atoms must be separated by space or not
   }
+
 
 mkSExprParser :: m c -> (c -> m b) -> m a -> m () -> (a -> a -> SpacingRule) -> SExprParser m c b a
 mkSExprParser = SExprParser
@@ -67,6 +62,18 @@ setAtom a sr p = mkSExprParser (pSTag p) (pETag p) a (pSpace p) sr
 setTags :: m c -> (c -> m b) -> SExprParser m c' b' a -> SExprParser m c b a
 setTags s e p = mkSExprParser s e (pAtom p) (pSpace p) (pSpacingRule p)
 
+setTagsFromList ::  (MonadParsec e s m) =>
+                    [(Tokens s, Tokens s, b)] -> SExprParser m c' b' a -> SExprParser m (Tokens s, b) b a
+setTagsFromList [] _ = error "setTagsFromList does not accept the empty list"
+setTagsFromList l p =
+  let --choose :: [(Tokens s, Tokens s)] -> m (Tokens s, Tokens s)
+      choose [] = empty
+      choose ((s, e, b) : ts) = (chunk s >> return (e, b)) <|> choose ts
+      
+      stag = choose l
+      etag = \(e, b) -> chunk e >> return b
+  in setTags stag etag p
+        
 spaceIsMandatory :: a -> a -> SpacingRule
 spaceIsMandatory = \_ _ -> SMandatory
 
