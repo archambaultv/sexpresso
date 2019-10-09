@@ -6,20 +6,32 @@ module Data.SExpresso.Parse
     Located(..),
     located,
 
-    SExprParser(..),
+    SExprParser,
+    SpacingRule(..),
+    pSTag,
+    pETag,
+    pAtom,
+    pSpace,
+    pSpacingRule,
+
     mkSExprParser,
     spaceIsMandatory,
     spaceIsOptional,
     setSpace,
-    setSpaceRule,
+    setSpacingRule,
+    setTags,
+    setAtom,
+    withLocation,
+    mkSpacingRule,
 
-    parseSExprList,
     parseSExpr,
     decodeOne,
     decode,
+
+    plainSExprParser
     )
   where
 
 import Data.SExpresso.Parse.Generic
-import Data.SExpresso.Parse.Char
 import Data.SExpresso.Parse.Location
+import Data.SExpresso.Parse.Char

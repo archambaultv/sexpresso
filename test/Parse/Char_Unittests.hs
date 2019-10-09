@@ -24,7 +24,7 @@ pDigit :: Parser String
 pDigit = some digitChar
 
 sexpParser :: SExprParser Parser () () String
-sexpParser = mkSExprParser (pIdent <|> pDigit)
+sexpParser = plainSExprParser (pIdent <|> pDigit)
 
 pSExpr :: Parser (SExpr () String)
 pSExpr = parseSExpr sexpParser
@@ -36,7 +36,7 @@ pDecode :: Parser [SExpr () String]
 pDecode = decode sexpParser
 
 pOptionalSpace :: Parser (SExpr () String)
-pOptionalSpace = decodeOne $ setSpaceRule spaceIsOptional sexpParser
+pOptionalSpace = decodeOne $ setSpacingRule spaceIsOptional sexpParser
 
 charTestTree :: TestTree
 charTestTree = testGroup "Parse/Generic.hs & Parse/Char.hs unit tests" $

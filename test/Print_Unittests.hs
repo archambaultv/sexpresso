@@ -35,7 +35,7 @@ pDigit = do
     Just _ -> return (-1 * n)
 
 sexpParser :: SExprParser Parser () () Integer
-sexpParser = mkSExprParser pDigit
+sexpParser = plainSExprParser pDigit
 
 printTestTree :: TestTree
 printTestTree = testGroup "Print.hs unit tests" $
