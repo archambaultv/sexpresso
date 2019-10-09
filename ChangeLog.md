@@ -1,3 +1,11 @@
-# Changelog for sexpresso
+# Changelog for S-expresso
 
-## Unreleased changes
+Version 0.1.0.0
+--------------- 
+
+Beta release
+
+* SExpr datatype
+* Generic SExpr parser
+* SExpr parser for character
+* SExpr flat printer
