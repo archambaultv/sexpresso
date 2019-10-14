@@ -1,5 +1,5 @@
-module Parse.Char_Unittests (
-  charTestTree
+module Parse_Unittests (
+  parseTestTree
   )where
 
 import Data.Void
@@ -26,24 +26,24 @@ pDigit = some digitChar
 sexpParser :: SExprParser Parser () () String
 sexpParser = plainSExprParser (pIdent <|> pDigit)
 
-pSExpr :: Parser (SExpr () String)
+pSExpr :: Parser (Sexp String)
 pSExpr = parseSExpr sexpParser
 
-pDecodeOne :: Parser (SExpr () String)
+pDecodeOne :: Parser (Sexp String)
 pDecodeOne = decodeOne sexpParser
 
-pDecode :: Parser [SExpr () String]
+pDecode :: Parser [Sexp String]
 pDecode = decode sexpParser
 
-pOptionalSpace :: Parser (SExpr () String)
+pOptionalSpace :: Parser (Sexp String)
 pOptionalSpace = decodeOne $ setSpacingRule spaceIsOptional sexpParser
 
-charTestTree :: TestTree
-charTestTree = testGroup "Parse/Generic.hs & Parse/Char.hs unit tests" $
+parseTestTree :: TestTree
+parseTestTree = testGroup "Parse/Generic.hs & Parse/Char.hs unit tests" $
   let tparse :: Parser a -> String -> Either String a
       tparse p s = first M.errorBundlePretty $ M.parse p "" s
 
-      sExprTests :: (Eq a, Show a) => Parser a -> (SExpr () String -> a) -> [TestTree]
+      sExprTests :: (Eq a, Show a) => Parser a -> (Sexp String -> a) -> [TestTree]
       sExprTests p f = [
         let s = "()" in testCase (show s) $ tparse p s @?= (Right $ f (SList () [])),
         let s = "(   )" in testCase (show s) $ tparse p s @?= (Right $ f (SList () [])),
@@ -67,7 +67,7 @@ charTestTree = testGroup "Parse/Generic.hs & Parse/Char.hs unit tests" $
         in testCase (show s) $ (isLeft $ tparse p "(foo1234)") @? "Parsing must fail. foo and 1234 are not separated by whitespace"
         ]
                          
-      decodeCommon :: (Eq a, Show a) => Parser a -> (SExpr () String -> a) -> [TestTree]
+      decodeCommon :: (Eq a, Show a) => Parser a -> (Sexp String -> a) -> [TestTree]
       decodeCommon p f = [
         let s = " () " in testCase (show s) $ tparse p s @?= (Right $ f (SList () [])),
         let s = " ()" in testCase (show s) $ tparse p s @?= (Right $ f (SList () [])),
