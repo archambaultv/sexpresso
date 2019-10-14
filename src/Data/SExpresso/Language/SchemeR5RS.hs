@@ -5,8 +5,12 @@
 -- as defined in section 7 of the report
 -- The library does parse tab and \r\n and whitespace
 module Data.SExpresso.Language.SchemeR5RS (
-  schemeR5RSTokenParser,
-  token2Datum,
+  SchemeToken(..),
+  tokenParser,
+
+  SExprType(..),
+  sexpr,
+  
   whitespace,
   comment,
   interTokenSpace,
@@ -15,6 +19,7 @@ module Data.SExpresso.Language.SchemeR5RS (
   boolean,
   character,
   stringParser,
+
   Radix(..),
   Exactness(..),
   Sign(..),
@@ -27,9 +32,10 @@ module Data.SExpresso.Language.SchemeR5RS (
   Complex(..),
   SchemeNumber(..),
   number,
-  SchemeToken(..),
-  tokenParser,
-  Datum(..)
+
+  Datum(..),
+  sexpr2Datum,
+
   ) where
 
 import Data.Void
@@ -69,21 +75,21 @@ tokenParser = (boolean >>= return . TBoolean) <|>
               (dot >> return TDot)
 
 
-r5RSspacingRule :: SchemeToken -> SpacingRule
-r5RSspacingRule (TString _) = SOptional
-r5RSspacingRule TQuote = SOptional
-r5RSspacingRule TQuasiquote  = SOptional
-r5RSspacingRule TComma = SOptional
-r5RSspacingRule TCommaAt = SOptional
-r5RSspacingRule _ = SMandatory
+spacingRule :: SchemeToken -> SpacingRule
+spacingRule (TString _) = SOptional
+spacingRule TQuote = SOptional
+spacingRule TQuasiquote  = SOptional
+spacingRule TComma = SOptional
+spacingRule TCommaAt = SOptional
+spacingRule _ = SMandatory
 
 data SExprType = STList | STVector
 
-schemeR5RSTokenParser :: SExprParser Parser SExprType SExprType SchemeToken
-schemeR5RSTokenParser =
+sexpr :: SExprParser Parser SExprType SExprType SchemeToken
+sexpr =
   let sTag = (single '(' >> return STList) <|> (chunk "#(" >> return STVector)
       eTag = \t -> single ')' >> return t
-  in SExprParser sTag eTag tokenParser interTokenSpace1 (mkSpacingRule r5RSspacingRule)
+  in SExprParser sTag eTag tokenParser interTokenSpace1 (mkSpacingRule spacingRule)
           
 data Datum = DBoolean Bool
            | DNumber SchemeNumber
@@ -98,50 +104,50 @@ data Datum = DBoolean Bool
            | DCommaAt Datum
            | DVector [Datum]
 
-token2Datum :: [SExpr SExprType SchemeToken] -> Either String [Datum]
-token2Datum [] = Right []
-token2Datum ((A (TBoolean x)) : xs) = (:) <$> pure (DBoolean x) <*> token2Datum xs
-token2Datum ((A (TNumber x)) : xs) = (:) <$> pure (DNumber x) <*> token2Datum xs
-token2Datum ((A (TChar x)) : xs) = (:) <$> pure (DChar x) <*> token2Datum xs
-token2Datum ((A (TString x)) : xs) = (:) <$> pure (DString x) <*> token2Datum xs
-token2Datum ((A (TIdentifier x)) : xs) = (:) <$> pure (DIdentifier x) <*> token2Datum xs
-token2Datum ((A TQuote) : xs) = do
-  xs' <- token2Datum xs
+sexpr2Datum :: [SExpr SExprType SchemeToken] -> Either String [Datum]
+sexpr2Datum [] = Right []
+sexpr2Datum ((A (TBoolean x)) : xs) = (:) <$> pure (DBoolean x) <*> sexpr2Datum xs
+sexpr2Datum ((A (TNumber x)) : xs) = (:) <$> pure (DNumber x) <*> sexpr2Datum xs
+sexpr2Datum ((A (TChar x)) : xs) = (:) <$> pure (DChar x) <*> sexpr2Datum xs
+sexpr2Datum ((A (TString x)) : xs) = (:) <$> pure (DString x) <*> sexpr2Datum xs
+sexpr2Datum ((A (TIdentifier x)) : xs) = (:) <$> pure (DIdentifier x) <*> sexpr2Datum xs
+sexpr2Datum ((A TQuote) : xs) = do
+  xs' <- sexpr2Datum xs
   if null xs'
   then Left "Expecting a datum after the quote."
   else return $ DQuote (head xs') : tail xs'
-token2Datum ((A TQuasiquote) : xs) = do
-  xs' <- token2Datum xs
+sexpr2Datum ((A TQuasiquote) : xs) = do
+  xs' <- sexpr2Datum xs
   if null xs'
   then Left "Expecting a datum after the quasiquote."
   else return $ DQuasiquote (head xs') : tail xs'
-token2Datum ((A TComma) : xs) = do
-  xs' <- token2Datum xs
+sexpr2Datum ((A TComma) : xs) = do
+  xs' <- sexpr2Datum xs
   if null xs'
   then Left "Expecting a datum after the comma."
   else return $ DQuote (head xs') : tail xs'
-token2Datum ((A TCommaAt) : xs) = do
-  xs' <- token2Datum xs
+sexpr2Datum ((A TCommaAt) : xs) = do
+  xs' <- sexpr2Datum xs
   if null xs'
   then Left "Expecting a datum after the quote."
   else return $ DCommaAt (head xs') : tail xs'
-token2Datum ((A TDot) : _) = Left "Unexpected dot"
-token2Datum ((SList STVector vs) : xs) = (:) <$> (token2Datum vs >>= return . DVector) <*> token2Datum xs
-token2Datum ((SList STList ls) : xs) = (:) <$> (listToken2Datum ls) <*> token2Datum xs
+sexpr2Datum ((A TDot) : _) = Left "Unexpected dot"
+sexpr2Datum ((SList STVector vs) : xs) = (:) <$> (sexpr2Datum vs >>= return . DVector) <*> sexpr2Datum xs
+sexpr2Datum ((SList STList ls) : xs) = (:) <$> (listToken2Datum ls) <*> sexpr2Datum xs
   where listToken2Datum ys =
           let l = length ys
           in if l < 3
-             then token2Datum ys >>= return . DList
+             then sexpr2Datum ys >>= return . DList
              else let penultimate = head $ drop (l - 2) ys
                   in case penultimate of
                        (A TDot) ->
                          let last' = head $ drop (l - 1) ys
                              tokens' = take (l - 2) ys
                          in do
-                           lastD <- token2Datum [last']
-                           tokensD <- token2Datum tokens'
+                           lastD <- sexpr2Datum [last']
+                           tokensD <- sexpr2Datum tokens'
                            return $ DDotList tokensD (head lastD) 
-                       _ -> token2Datum ys >>= return . DList
+                       _ -> sexpr2Datum ys >>= return . DList
 
 
 ------------------------- Whitespace and comments -------------------------
