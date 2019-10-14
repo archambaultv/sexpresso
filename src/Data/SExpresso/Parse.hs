@@ -1,29 +1,22 @@
+-- |
+-- Module      :  Data.SExpresso.Parse
+-- Copyright   :  © 2019 Vincent Archambault
+-- License     :  0BSD
+--
+-- Maintainer  :  Vincent Archambault <archambault.v@gmail.com>
+-- Stability   :  experimental
+--
+-- This module re-exports everything from
+-- "Data.SExpresso.Parse.Generic", "Data.SExpresso.Parse.Char" and
+-- "Data.SExpresso.Parse.Location".
+
 {-# LANGUAGE OverloadedStrings #-}
 
 module Data.SExpresso.Parse
   (
-    Location(..),
-    Located(..),
-    located,
-
-    SExprParser(..),
-    SpacingRule(..),
-
-    mkSExprParser,
-    spaceIsMandatory,
-    spaceIsOptional,
-    setSpace,
-    setSpacingRule,
-    setTags,
-    setAtom,
-    withLocation,
-    mkSpacingRule,
-
-    parseSExpr,
-    decodeOne,
-    decode,
-
-    plainSExprParser
+    module Data.SExpresso.Parse.Generic,
+    module Data.SExpresso.Parse.Char,
+    module Data.SExpresso.Parse.Location
     )
   where
 

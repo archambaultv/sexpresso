@@ -9,8 +9,6 @@ import Test.Tasty
 import Test.Tasty.HUnit
 import Data.SExpresso.SExpr
 
-type Sexp a = SExpr () a
-
 sexpTestTree :: TestTree
 sexpTestTree = testGroup "Sexpr.hs unit tests"
 
