@@ -159,7 +159,9 @@ whitespace = (char ' ' >> return ()) <|>
              (eol >> return ())
 
 comment :: (MonadParsec e s m, Token s ~ Char) => m ()
-comment = char ';' >> takeWhileP Nothing (\c -> c == '\n' || c == '\r') >> eol >> return ()
+comment = char ';' >>
+          takeWhileP Nothing (\c -> c == '\n' || c == '\r') >>
+          ((eol >> return ()) <|> eof)
 
 atmosphere :: (MonadParsec e s m, Token s ~ Char) => m ()
 atmosphere = whitespace <|> comment
