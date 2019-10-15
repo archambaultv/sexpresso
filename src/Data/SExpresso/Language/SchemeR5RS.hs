@@ -190,7 +190,7 @@ subsequentList = initialList ++ ['0'..'9'] ++ "+-.@"
 
 peculiarIdentifier :: forall e s m . (MonadParsec e s m, Token s ~ Char) => m T.Text
 peculiarIdentifier = (single '+' >> return "+") <|>
-                     (single '+' >> return "-") <|>
+                     (single '-' >> return "-") <|>
                      (chunk (tokensToChunk (Proxy :: Proxy s) "...") >> return "...")
 
 ------------------------- Booleans -------------------------
