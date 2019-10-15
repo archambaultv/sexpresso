@@ -60,6 +60,7 @@ data SchemeToken = TBoolean Bool
                  | TComma
                  | TCommaAt
                  | TDot
+                 deriving (Eq, Show)
 
 tokenParser :: (MonadParsec e s m, Token s ~ Char) => m SchemeToken
 tokenParser = (boolean >>= return . TBoolean) <|>
@@ -83,6 +84,7 @@ spacingRule TCommaAt = SOptional
 spacingRule _ = SMandatory
 
 data SExprType = STList | STVector
+               deriving (Eq, Show)
 
 sexpr :: forall e s m . (MonadParsec e s m, Token s ~ Char) => SExprParser m SExprType SExprType SchemeToken
 sexpr =
@@ -102,6 +104,7 @@ data Datum = DBoolean Bool
            | DComma Datum
            | DCommaAt Datum
            | DVector [Datum]
+           deriving (Eq, Show)
 
 sexpr2Datum :: [SExpr SExprType SchemeToken] -> Either String [Datum]
 sexpr2Datum [] = Right []
@@ -233,29 +236,38 @@ data Radix = R2 | R8 | R10 | R16
            deriving (Eq, Show)
 
 data Exactness = Exact | Inexact
+               deriving (Eq, Show)
 
 data Sign = Plus | Minus
+          deriving (Eq, Show)
 
 -- The second integer indicates the number of # sign in the number
 type Pounds = Integer
 
 data UInteger = UInteger Integer Pounds
+              deriving (Eq, Show)
 
 data Precision = PDefault | PShort | PSingle | PDouble | PLong
+               deriving (Eq, Show)
 
 data Suffix = Suffix Precision Sign Integer
+            deriving (Eq, Show)
 
 data UReal = UDecimal UInteger (Either UInteger Pounds) Suffix
            | URational UInteger UInteger
            | UInt UInteger
+           deriving (Eq, Show)
 
 data SReal = SReal Sign UReal
+           deriving (Eq, Show)
 
 data Complex = ComplexReal SReal
              | ComplexAngle SReal SReal
              | ComplexAbsolute SReal SReal
+             deriving (Eq, Show)
 
 data SchemeNumber = SchemeNumber (Maybe Radix) (Maybe Exactness) Complex
+                  deriving (Eq, Show)
 
 number :: (MonadParsec e s m, Token s ~ Char) => m SchemeNumber
 number = do
