@@ -243,13 +243,17 @@ type Pounds = Integer
 data UInteger = UInteger Integer Pounds
               deriving (Eq, Show)
 
+hasPounds :: UInteger -> Bool
+hasPounds (UInteger _ 0) = False
+hasPounds _ = True
+
 data Precision = PDefault | PShort | PSingle | PDouble | PLong
                deriving (Eq, Show)
 
 data Suffix = Suffix Precision Sign Integer
             deriving (Eq, Show)
 
-data UReal = UDecimal UInteger (Either UInteger Pounds) Suffix
+data UReal = UDecimal UInteger (Either UInteger Pounds) (Maybe Suffix)
            | URational UInteger UInteger
            | UInt UInteger
            deriving (Eq, Show)
@@ -285,10 +289,14 @@ complex r = (chunk (tokensToChunk (Proxy :: Proxy s) "+i") >>
             Just '@' -> do
               n2 <- real r
               return $ ComplexAngle n1 n2
-            Just _ -> noRealPart n1
+            Just '+' -> noRealPart' Plus n1
+            Just _ -> noRealPart' Minus n1
           
         noRealPart n1 = do
           s <- (char '-' >> return Minus) <|> (char '+' >> return Plus)
+          noRealPart' s n1
+
+        noRealPart' s n1 = do
           u <- optional (ureal r)
           _ <- char 'i'
           case u of
@@ -306,32 +314,36 @@ ureal r =
   case r of
     R10 -> dotN <|> (do
       u1 <- uinteger r
-      case u1 of
-        UInteger _ nbPounds | nbPounds > 0 -> do
-            mc <- optional (char '/' <|> char '.')
-            case mc of
-              Nothing -> return $ UInt u1
-              Just '/' -> rational u1
-              Just _ -> do
-                pounds <- takeWhileP Nothing (== '#')
-                s <- suffix
-                return $ UDecimal u1 (Right $ toInteger $ chunkLength (Proxy :: Proxy s) pounds) s
-        UInteger _ _ -> do
-          mc <- optional (char '/' <|> char '.')
-          case mc of
+      mc <- optional (char '/' <|> char '.')
+      case mc of
+        -- Integer, with or without suffix
+        Nothing -> do
+          s <- optional suffix
+          case s of
+            Just _ -> return $ UDecimal u1 (Left $ UInteger 0 0) s
             Nothing -> return $ UInt u1
-            Just '/' -> rational u1
-            Just _ -> do
-              n <- option 0 (udigit R10)
-              pounds <- takeWhileP Nothing (== '#')
-              s <- suffix
-              return $ UDecimal u1 (Left $ UInteger n (toInteger $ chunkLength (Proxy :: Proxy s) pounds)) s 
-          )
-                
-    _ -> intOrRational
+
+        -- Rational
+        Just '/' -> rational u1
+
+        -- Decimal
+        Just _ ->
+          if hasPounds u1
+          then do
+            pounds <- takeWhileP Nothing (== '#')
+            s <- optional suffix
+            return $ UDecimal u1 (Right $ toInteger $ chunkLength (Proxy :: Proxy s) pounds) s
+          else do
+            n <- option 0 (udigit R10)
+            pounds <- takeWhileP Nothing (== '#')
+            s <- optional suffix
+            return $ UDecimal u1 (Left $ UInteger n (toInteger $ chunkLength (Proxy :: Proxy s) pounds)) s 
+                    )
+
+    _ -> intOrRationalOnly
 
   where        
-        intOrRational = do
+        intOrRationalOnly = do
           u1 <- uinteger r
           mc <- optional (char '/')
           case mc of
@@ -346,7 +358,7 @@ ureal r =
           _ <- char '.'
           n <- udigit R10
           pounds <- takeWhileP Nothing (== '#')
-          s <- suffix
+          s <- optional suffix
           return $ UDecimal (UInteger 0 0) (Left $ UInteger n (toInteger $ chunkLength (Proxy :: Proxy s) pounds)) s
 
 uinteger :: forall e s m . (MonadParsec e s m, Token s ~ Char) => Radix -> m UInteger
