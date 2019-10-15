@@ -358,16 +358,19 @@ uinteger r = do
 
 prefix :: (MonadParsec e s m, Token s ~ Char) => m (Maybe Radix, Maybe Exactness)
 prefix = do
-  _ <- char '#'
-  c <- char 'i' <|> char 'e' <|> char 'b' <|>
-       char 'o' <|> char 'd' <|> char 'x'
-  case c of
-    'i' -> optional radix >>= \r -> return (r, Just Inexact)
-    'e' -> optional radix >>= \r -> return (r, Just Exact)
-    'b' -> optional exactness >>= \e -> return (Just R2, e)
-    'o' -> optional exactness >>= \e -> return (Just R8, e)
-    'd' -> optional exactness >>= \e -> return (Just R10, e)
-    _ -> optional exactness >>= \e -> return (Just R16, e)
+  x <- optional $ char '#'
+  case x of
+    Nothing -> return (Nothing, Nothing)
+    _ -> do
+      c <- char 'i' <|> char 'e' <|> char 'b' <|>
+           char 'o' <|> char 'd' <|> char 'x'
+      case c of
+        'i' -> optional radix >>= \r -> return (r, Just Inexact)
+        'e' -> optional radix >>= \r -> return (r, Just Exact)
+        'b' -> optional exactness >>= \e -> return (Just R2, e)
+        'o' -> optional exactness >>= \e -> return (Just R8, e)
+        'd' -> optional exactness >>= \e -> return (Just R10, e)
+        _ -> optional exactness >>= \e -> return (Just R16, e)
 
 exactness :: forall e s m . (MonadParsec e s m, Token s ~ Char) => m Exactness
 exactness = (chunk (tokensToChunk (Proxy :: Proxy s) "#e") >> return Exact) <|>
