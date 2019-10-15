@@ -212,25 +212,19 @@ stringParser :: forall e s m . (MonadParsec e s m, Token s ~ Char) => m T.Text
 stringParser = do
   _ <- char '"'
   xs <- consume
-  _ <- char '"'
   return $ L.toStrict $ B.toLazyText xs
 
   where consume :: (MonadParsec e s m, Token s ~ Char) => m B.Builder
         consume = do
-          x <- takeWhileP Nothing (\c -> c /= '\\' || c /= '"')
+          x <- takeWhileP Nothing (\c -> c /= '\\' && c /= '"')
           c <- char '\\' <|> char '"'
           let xB = B.fromString $ chunkToTokens (Proxy :: Proxy s) x
           case c of
             '"' -> return $ xB
             _ -> do
                c1 <- char '\\' <|> char '"'
-               case c1 of
-                 '\\' -> do
-                   x2 <- consume
-                   return $ xB <> B.fromText "\\" <> x2
-                 _ -> do
-                   x2 <- consume
-                   return $ xB <> B.fromText "\"" <> x2
+               x2 <- consume
+               return $ xB <> B.fromString [c1] <> x2
 
 
 ------------------------- Numbers -------------------------
