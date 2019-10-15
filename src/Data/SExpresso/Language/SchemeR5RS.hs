@@ -1,5 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 -- Parsing library for some parts of the Scheme R5RS language
 -- as defined in section 7 of the report
@@ -38,18 +39,16 @@ module Data.SExpresso.Language.SchemeR5RS (
 
   ) where
 
-import Data.Void
 import Data.Maybe
+import Data.Proxy
 import qualified Data.Text as T
 import qualified Data.Text.Lazy as L
 import qualified Data.Text.Lazy.Builder as B
 import Text.Megaparsec
 import Text.Megaparsec.Char
-import qualified Text.Megaparsec.Char.Lexer as L
+import qualified Text.Megaparsec.Char.Lexer as ML
 import Data.SExpresso.SExpr
 import Data.SExpresso.Parse
-
-type Parser = Parsec Void T.Text
 
 data SchemeToken = TBoolean Bool
                  | TNumber SchemeNumber
@@ -62,7 +61,7 @@ data SchemeToken = TBoolean Bool
                  | TCommaAt
                  | TDot
 
-tokenParser :: Parser SchemeToken
+tokenParser :: (MonadParsec e s m, Token s ~ Char) => m SchemeToken
 tokenParser = (boolean >>= return . TBoolean) <|>
               (number >>= return . TNumber) <|>
               (character >>= return . TChar) <|>
@@ -85,9 +84,9 @@ spacingRule _ = SMandatory
 
 data SExprType = STList | STVector
 
-sexpr :: SExprParser Parser SExprType SExprType SchemeToken
+sexpr :: forall e s m . (MonadParsec e s m, Token s ~ Char) => SExprParser m SExprType SExprType SchemeToken
 sexpr =
-  let sTag = (single '(' >> return STList) <|> (chunk "#(" >> return STVector)
+  let sTag = (single '(' >> return STList) <|> (chunk (tokensToChunk (Proxy :: Proxy s) "#(") >> return STVector)
       eTag = \t -> single ')' >> return t
   in SExprParser sTag eTag tokenParser interTokenSpace1 (mkSpacingRule spacingRule)
           
@@ -151,32 +150,32 @@ sexpr2Datum ((SList STList ls) : xs) = (:) <$> (listToken2Datum ls) <*> sexpr2Da
 
 
 ------------------------- Whitespace and comments -------------------------
-whitespace :: Parser ()
+whitespace :: (MonadParsec e s m, Token s ~ Char) => m ()
 whitespace = (char ' ' >> return ()) <|>
              (char '\t' >> return ()) <|>
              (eol >> return ())
 
-comment :: Parser ()
+comment :: (MonadParsec e s m, Token s ~ Char) => m ()
 comment = char ';' >> takeWhileP Nothing (\c -> c == '\n' || c == '\r') >> eol >> return ()
 
-atmosphere :: Parser ()
+atmosphere :: (MonadParsec e s m, Token s ~ Char) => m ()
 atmosphere = whitespace <|> comment
 
-interTokenSpace :: Parser ()
+interTokenSpace :: (MonadParsec e s m, Token s ~ Char) => m ()
 interTokenSpace = many atmosphere >> return ()
 
-interTokenSpace1 :: Parser ()
+interTokenSpace1 :: (MonadParsec e s m, Token s ~ Char) => m ()
 interTokenSpace1 = some atmosphere >> return ()
 
 ------------------------- Identifier -------------------------
 
 -- FixMe : Must not parse +i, -i, etc ... (they are numbers)
-identifier :: Parser T.Text
+identifier :: forall e s m . (MonadParsec e s m, Token s ~ Char) => m T.Text
 identifier = standardIdentifier <|> peculiarIdentifier
   where standardIdentifier = do
           i <- oneOf initialList
           is <- takeWhileP Nothing (\c -> c `elem` subsequentList)
-          return $ T.cons i is
+          return $ T.pack $ (i : chunkToTokens (Proxy :: Proxy s) is)
 
 initialList :: String
 initialList = ['a'..'z'] ++ ['A'..'Z'] ++ "!$%&*/:<=>?^_~"
@@ -184,44 +183,49 @@ initialList = ['a'..'z'] ++ ['A'..'Z'] ++ "!$%&*/:<=>?^_~"
 subsequentList :: String
 subsequentList = initialList ++ ['0'..'9'] ++ "+-.@"
 
-peculiarIdentifier :: Parser T.Text
-peculiarIdentifier = string "+" <|> string "-" <|> string "..."
+peculiarIdentifier :: forall e s m . (MonadParsec e s m, Token s ~ Char) => m T.Text
+peculiarIdentifier = (single '+' >> return "+") <|>
+                     (single '+' >> return "-") <|>
+                     (chunk (tokensToChunk (Proxy :: Proxy s) "...") >> return "...")
 
 ------------------------- Booleans -------------------------
-boolean :: Parser Bool
-boolean = (string "#t" >> return True) <|>
-          (string "#f" >> return False)
+boolean :: forall e s m . (MonadParsec e s m, Token s ~ Char) => m Bool
+boolean = (chunk (tokensToChunk (Proxy :: Proxy s) "#t") >> return True) <|>
+          (chunk (tokensToChunk (Proxy :: Proxy s) "#f") >> return False)
 
 
 ------------------------- Character -------------------------
-character :: Parser Char
+character :: forall e s m . (MonadParsec e s m, Token s ~ Char) => m Char
 character = do
-  _ <- string "#\\"
-  (string "newline" >> return '\n') <|> (string "space" >> return ' ') <|> anySingle
+  _ <- chunk (tokensToChunk (Proxy :: Proxy s) "#\\")
+  (chunk (tokensToChunk (Proxy :: Proxy s) "newline") >> return '\n') <|>
+   (chunk (tokensToChunk (Proxy :: Proxy s) "space") >> return ' ') <|>
+   anySingle
 
 ------------------------- String -------------------------
-stringParser :: Parser T.Text
+stringParser :: forall e s m . (MonadParsec e s m, Token s ~ Char) => m T.Text
 stringParser = do
   _ <- char '"'
   xs <- consume
   _ <- char '"'
   return $ L.toStrict $ B.toLazyText xs
 
-  where consume :: Parser B.Builder
+  where consume :: (MonadParsec e s m, Token s ~ Char) => m B.Builder
         consume = do
           x <- takeWhileP Nothing (\c -> c /= '\\' || c /= '"')
           c <- char '\\' <|> char '"'
+          let xB = B.fromString $ chunkToTokens (Proxy :: Proxy s) x
           case c of
-            '"' -> return $ B.fromText x
+            '"' -> return $ xB
             _ -> do
                c1 <- char '\\' <|> char '"'
                case c1 of
                  '\\' -> do
                    x2 <- consume
-                   return $ B.fromText x <> B.fromText "\\" <> x2
+                   return $ xB <> B.fromText "\\" <> x2
                  _ -> do
                    x2 <- consume
-                   return $ B.fromText x <> B.fromText "\"" <> x2
+                   return $ xB <> B.fromText "\"" <> x2
 
 
 ------------------------- Numbers -------------------------
@@ -253,15 +257,17 @@ data Complex = ComplexReal SReal
 
 data SchemeNumber = SchemeNumber (Maybe Radix) (Maybe Exactness) Complex
 
-number :: Parser SchemeNumber
+number :: (MonadParsec e s m, Token s ~ Char) => m SchemeNumber
 number = do
   (r, e) <- prefix
   c <- complex (fromMaybe R10 r)
   return $ SchemeNumber r e c
  
-complex :: Radix -> Parser Complex
-complex r = (string "+i" >> (return $ ComplexAbsolute (SReal Plus (UInt $ UInteger 0 0)) (SReal Plus (UInt $ UInteger 1 0)))) <|>
-            (string "-i" >> (return $ ComplexAbsolute (SReal Plus (UInt $ UInteger 0 0)) (SReal Minus (UInt $ UInteger 1 0)))) <|>
+complex :: forall e s m . (MonadParsec e s m, Token s ~ Char) => Radix -> m Complex
+complex r = (chunk (tokensToChunk (Proxy :: Proxy s) "+i") >>
+             (return $ ComplexAbsolute (SReal Plus (UInt $ UInteger 0 0)) (SReal Plus (UInt $ UInteger 1 0)))) <|>
+            (chunk (tokensToChunk (Proxy :: Proxy s) "-i") >>
+             (return $ ComplexAbsolute (SReal Plus (UInt $ UInteger 0 0)) (SReal Minus (UInt $ UInteger 1 0)))) <|>
             withRealPart <|> noRealPart (SReal Plus (UInt $ UInteger 0 0))
   where withRealPart = do
           n1 <- real r
@@ -281,13 +287,13 @@ complex r = (string "+i" >> (return $ ComplexAbsolute (SReal Plus (UInt $ UInteg
             Nothing -> return $ ComplexAbsolute n1 (SReal s (UInt $ UInteger 1 0))
             Just n2 -> return $ ComplexAbsolute n1 (SReal s n2)
 
-real :: Radix -> Parser SReal
+real :: (MonadParsec e s m, Token s ~ Char) => Radix -> m SReal
 real r = do
   s <- option Plus sign
   u <- ureal r
   return $ SReal s u
 
-ureal :: Radix -> Parser UReal
+ureal :: forall e s m . (MonadParsec e s m, Token s ~ Char) => Radix -> m UReal
 ureal r =
   case r of
     R10 -> dotN <|> (do
@@ -301,7 +307,7 @@ ureal r =
               Just _ -> do
                 pounds <- takeWhileP Nothing (== '#')
                 s <- suffix
-                return $ UDecimal u1 (Right $ toInteger $ T.length pounds) s
+                return $ UDecimal u1 (Right $ toInteger $ chunkLength (Proxy :: Proxy s) pounds) s
         UInteger _ _ -> do
           mc <- optional (char '/' <|> char '.')
           case mc of
@@ -311,41 +317,38 @@ ureal r =
               n <- option 0 (udigit R10)
               pounds <- takeWhileP Nothing (== '#')
               s <- suffix
-              return $ UDecimal u1 (Left $ UInteger n (toInteger $ T.length pounds)) s 
+              return $ UDecimal u1 (Left $ UInteger n (toInteger $ chunkLength (Proxy :: Proxy s) pounds)) s 
           )
                 
     _ -> intOrRational
 
-  where
-        intOrRational :: Parser UReal
+  where        
         intOrRational = do
           u1 <- uinteger r
           mc <- optional (char '/')
           case mc of
             Nothing -> return $ UInt u1
             Just _ -> rational u1
-
-        rational :: UInteger -> Parser UReal
+        
         rational u1 = do
           u2 <- uinteger r
           return $ URational u1 u2
 
-        dotN :: Parser UReal
         dotN = do
           _ <- char '.'
           n <- udigit R10
           pounds <- takeWhileP Nothing (== '#')
           s <- suffix
-          return $ UDecimal (UInteger 0 0) (Left $ UInteger n (toInteger $ T.length pounds)) s
+          return $ UDecimal (UInteger 0 0) (Left $ UInteger n (toInteger $ chunkLength (Proxy :: Proxy s) pounds)) s
 
-uinteger :: Radix -> Parser UInteger
+uinteger :: forall e s m . (MonadParsec e s m, Token s ~ Char) => Radix -> m UInteger
 uinteger r = do
   n <- udigit r
   pounds <- takeWhileP Nothing (== '#')
-  return $ UInteger n (toInteger $ T.length pounds)
+  return $ UInteger n (toInteger $ chunkLength (Proxy :: Proxy s) pounds)
   
 
-prefix :: Parser (Maybe Radix, Maybe Exactness)
+prefix :: (MonadParsec e s m, Token s ~ Char) => m (Maybe Radix, Maybe Exactness)
 prefix = do
   _ <- char '#'
   c <- char 'i' <|> char 'e' <|> char 'b' <|>
@@ -358,29 +361,29 @@ prefix = do
     'd' -> optional exactness >>= \e -> return (Just R10, e)
     _ -> optional exactness >>= \e -> return (Just R16, e)
 
-exactness :: Parser Exactness
-exactness = (string "#e" >> return Exact) <|>
-            (string "#i" >> return Inexact)
+exactness :: forall e s m . (MonadParsec e s m, Token s ~ Char) => m Exactness
+exactness = (chunk (tokensToChunk (Proxy :: Proxy s) "#e") >> return Exact) <|>
+            (chunk (tokensToChunk (Proxy :: Proxy s) "#i") >> return Inexact)
   
-radix :: Parser Radix
+radix :: forall e s m . (MonadParsec e s m, Token s ~ Char) => m  Radix
 radix =
-  (string "#b" >> return R2) <|>
-  (string "#o" >> return R8) <|>
-  (string "#d" >> return R10) <|>
-  (string "#x" >> return R16)
+  (chunk (tokensToChunk (Proxy :: Proxy s) "#b") >> return R2) <|>
+  (chunk (tokensToChunk (Proxy :: Proxy s) "#o") >> return R8) <|>
+  (chunk (tokensToChunk (Proxy :: Proxy s) "#d") >> return R10) <|>
+  (chunk (tokensToChunk (Proxy :: Proxy s) "#x") >> return R16)
   
-udigit :: Radix -> Parser Integer
+udigit :: (MonadParsec e s m, Token s ~ Char) => Radix -> m Integer
 udigit r = do
   case r of
-    R2 -> L.binary
-    R8 -> L.octal
-    R10 -> L.decimal
-    R16 -> L.hexadecimal
+    R2 -> ML.binary
+    R8 -> ML.octal
+    R10 -> ML.decimal
+    R16 -> ML.hexadecimal
 
-sign :: Parser Sign
+sign :: (MonadParsec e s m, Token s ~ Char) => m  Sign
 sign = (char '-' >> return Minus) <|> (char '+' >> return Plus)
 
-suffix :: Parser Suffix
+suffix :: (MonadParsec e s m, Token s ~ Char) => m Suffix
 suffix = do
   p <- (char 'e' >> return PDefault)  <|>
        (char 's' >> return PShort)  <|>
@@ -392,17 +395,17 @@ suffix = do
   return $ Suffix p s n
 
 ------------------------- Other tokens -------------------------
-quote :: Parser Char
+quote :: (MonadParsec e s m, Token s ~ Char) => m Char
 quote = char '\''
 
-quasiquote :: Parser Char
+quasiquote :: (MonadParsec e s m, Token s ~ Char) => m Char
 quasiquote = char '`'
 
-comma :: Parser Char
+comma :: (MonadParsec e s m, Token s ~ Char) => m Char
 comma = char ','
 
-commaAt :: Parser T.Text
-commaAt = string ",@"
+commaAt :: forall e s m . (MonadParsec e s m, Token s ~ Char) => m String
+commaAt = chunk (tokensToChunk (Proxy :: Proxy s) ",@") >> return ",@"
 
-dot :: Parser Char
+dot :: (MonadParsec e s m, Token s ~ Char) => m Char
 dot = char '.'
