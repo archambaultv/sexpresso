@@ -41,6 +41,8 @@ module Data.SExpresso.Language.SchemeR5RS (
 
 import Data.Maybe
 import Data.Proxy
+import Data.List
+import qualified Data.Char as C
 import qualified Data.Text as T
 import qualified Data.Text.Lazy as L
 import qualified Data.Text.Lazy.Builder as B
@@ -283,12 +285,13 @@ complex r = (chunk (tokensToChunk (Proxy :: Proxy s) "+i") >>
             withRealPart <|> noRealPart (SReal Plus (UInt $ UInteger 0 0))
   where withRealPart = do
           n1 <- real r
-          c <- optional (char '@' <|> char '+' <|> char '-')
+          c <- optional (char '@' <|> char '+' <|> char '-' <|> char 'i')
           case c of
             Nothing -> return $ ComplexReal n1
             Just '@' -> do
               n2 <- real r
               return $ ComplexAngle n1 n2
+            Just 'i' -> return $ ComplexAbsolute (SReal Plus (UInt $ UInteger 0 0)) n1
             Just '+' -> noRealPart' Plus n1
             Just _ -> noRealPart' Minus n1
           
@@ -395,13 +398,19 @@ radix =
   (chunk (tokensToChunk (Proxy :: Proxy s) "#d") >> return R10) <|>
   (chunk (tokensToChunk (Proxy :: Proxy s) "#x") >> return R16)
   
-udigit :: (MonadParsec e s m, Token s ~ Char) => Radix -> m Integer
+udigit :: forall e s m . (MonadParsec e s m, Token s ~ Char) => Radix -> m Integer
 udigit r = do
   case r of
     R2 -> ML.binary
     R8 -> ML.octal
     R10 -> ML.decimal
-    R16 -> ML.hexadecimal
+    R16 -> hexadecimal
+  where hexadecimal = mkNum
+                      <$> takeWhile1P Nothing (\c -> c `elem` ("0123456789abcdef" :: String))
+                      <?> "hexadecimal integer"
+                      
+        mkNum    = foldl' step 0 . chunkToTokens (Proxy :: Proxy s)
+        step a c = a * 16 + fromIntegral (C.digitToInt c)
 
 sign :: (MonadParsec e s m, Token s ~ Char) => m  Sign
 sign = (char '-' >> return Minus) <|> (char '+' >> return Plus)

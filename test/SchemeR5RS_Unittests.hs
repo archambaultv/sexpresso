@@ -141,6 +141,33 @@ r5rsTestTree = testGroup "Language/R5RS.hs" $ [
       let s = "1" in testCase (show s) $ tparse R5.number s @?= (Right $ SchemeNumber Nothing Nothing $
                       ComplexReal (SReal Plus (UInt $ UInteger 1 0))),
 
+      
+      let s = "#e1" in testCase (show s) $ tparse R5.number s @?= (Right $ SchemeNumber Nothing (Just Exact) $
+                      ComplexReal (SReal Plus (UInt $ UInteger 1 0))),
+        
+      let s = "#i1" in testCase (show s) $ tparse R5.number s @?= (Right $ SchemeNumber Nothing (Just Inexact) $
+                      ComplexReal (SReal Plus (UInt $ UInteger 1 0))),
+        
+      let s = "#b1" in testCase (show s) $ tparse R5.number s @?= (Right $ SchemeNumber (Just R2) Nothing $
+                      ComplexReal (SReal Plus (UInt $ UInteger 1 0))),
+      let s = "#o1" in testCase (show s) $ tparse R5.number s @?= (Right $ SchemeNumber (Just R8) Nothing $
+                      ComplexReal (SReal Plus (UInt $ UInteger 1 0))),
+      let s = "#d1" in testCase (show s) $ tparse R5.number s @?= (Right $ SchemeNumber (Just R10) Nothing $
+                      ComplexReal (SReal Plus (UInt $ UInteger 1 0))),
+      let s = "#x1" in testCase (show s) $ tparse R5.number s @?= (Right $ SchemeNumber (Just R16) Nothing $
+                      ComplexReal (SReal Plus (UInt $ UInteger 1 0))),
+      let s = "#xa" in testCase (show s) $ tparse R5.number s @?= (Right $ SchemeNumber (Just R16) Nothing $
+                                                                   ComplexReal (SReal Plus (UInt $ UInteger 10 0))),
+      let s = "#xb" in testCase (show s) $ tparse R5.number s @?= (Right $ SchemeNumber (Just R16) Nothing $
+                      ComplexReal (SReal Plus (UInt $ UInteger 11 0))),
+      let s = "#xc" in testCase (show s) $ tparse R5.number s @?= (Right $ SchemeNumber (Just R16) Nothing $
+                      ComplexReal (SReal Plus (UInt $ UInteger 12 0))),
+      let s = "#xd" in testCase (show s) $ tparse R5.number s @?= (Right $ SchemeNumber (Just R16) Nothing $
+                      ComplexReal (SReal Plus (UInt $ UInteger 13 0))),
+      let s = "#xe" in testCase (show s) $ tparse R5.number s @?= (Right $ SchemeNumber (Just R16) Nothing $
+                      ComplexReal (SReal Plus (UInt $ UInteger 14 0))),
+      let s = "#xf" in testCase (show s) $ tparse R5.number s @?= (Right $ SchemeNumber (Just R16) Nothing $
+                      ComplexReal (SReal Plus (UInt $ UInteger 15 0))),
       let s = "-0001" in testCase (show s) $ tparse R5.number s @?= (Right $ SchemeNumber Nothing Nothing $
                       ComplexReal (SReal Minus (UInt $ UInteger 1 0))),
       let s = "-0000" in testCase (show s) $ tparse R5.number s @?= (Right $ SchemeNumber Nothing Nothing $
@@ -237,7 +264,35 @@ r5rsTestTree = testGroup "Language/R5RS.hs" $ [
                                                                      
       let s = "-8i" in testCase (show s) $ tparse R5.number s @?= (Right $ SchemeNumber Nothing Nothing $
                       ComplexAbsolute (SReal Plus (UInt $ UInteger 0 0)) (SReal Minus (UInt $ UInteger 8 0))),
-     
+
+      
+      let s = "-8.25i" in testCase (show s) $ tparse R5.number s @?= (Right $ SchemeNumber Nothing Nothing $
+                      ComplexAbsolute (SReal Plus (UInt $ UInteger 0 0)) (SReal Minus (UDecimal (UInteger 8 0)
+                                                                                      (Left (UInteger 25 0))
+                                                                                      Nothing))),
+      let s = "0@25" in testCase (show s) $ tparse R5.number s @?= (Right $ SchemeNumber Nothing Nothing $
+                      ComplexAngle (SReal Plus (UInt $ UInteger 0 0)) (SReal Plus (UInt $ UInteger 25 0))),
+
+      let s = "1/4@-25" in testCase (show s) $ tparse R5.number s @?= (Right $ SchemeNumber Nothing Nothing $
+                      ComplexAngle (SReal Plus (URational (UInteger 1 0) (UInteger 4 0))) (SReal Minus (UInt $ UInteger 25 0))),
+
+
+      let s = "1#/4@-25##" in testCase (show s) $ tparse R5.number s @?= (Right $ SchemeNumber Nothing Nothing $
+                      ComplexAngle (SReal Plus (URational (UInteger 1 1) (UInteger 4 0))) (SReal Minus (UInt $ UInteger 25 2))),
+
+      let s = "#b3" in testCase (show s) $ (isLeft $ tparse R5.number s) @? "Parsing must fail on #b3",
+      let s = "#o9" in testCase (show s) $ (isLeft $ tparse R5.number s) @? "Parsing must fail on #o9",
+      let s = "#da" in testCase (show s) $ (isLeft $ tparse R5.number s) @? "Parsing must fail on #da",
+      let s = "#xA" in testCase (show s) $ (isLeft $ tparse R5.number s) @? "Parsing must fail on #xA",
+      
+      let s = "#b1.1" in testCase (show s) $ (isLeft $ tparse R5.number s) @? "Parsing must fail on #b1.1",
+      let s = "#o1.1" in testCase (show s) $ (isLeft $ tparse R5.number s) @? "Parsing must fail on #o1.1",
+      let s = "#x1.1" in testCase (show s) $ (isLeft $ tparse R5.number s) @? "Parsing must fail on #x1.1",
+      let s = "#b.1" in testCase (show s) $ (isLeft $ tparse R5.number s) @? "Parsing must fail on #b.1",
+      let s = "#o.1" in testCase (show s) $ (isLeft $ tparse R5.number s) @? "Parsing must fail on #o.1",
+      let s = "#x.1" in testCase (show s) $ (isLeft $ tparse R5.number s) @? "Parsing must fail on #x.1",
+      
+      let s = "123##.12" in testCase (show s) $ (isLeft $ tparse R5.number s) @? "Parsing must fail on 123##.12",
       let s = "#t" in testCase (show s) $ (isLeft $ tparse R5.number s) @? "Parsing must fail on #t",
       let s = "#f" in testCase (show s) $ (isLeft $ tparse R5.number s) @? "Parsing must fail on #f"
       ]
