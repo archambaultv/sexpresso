@@ -278,33 +278,41 @@ number = do
   return $ SchemeNumber r e c
  
 complex :: forall e s m . (MonadParsec e s m, Token s ~ Char) => Radix -> m Complex
-complex r = (chunk (tokensToChunk (Proxy :: Proxy s) "+i") >>
-             (return $ ComplexAbsolute (SReal Plus (UInt $ UInteger 0 0)) (SReal Plus (UInt $ UInteger 1 0)))) <|>
-            (chunk (tokensToChunk (Proxy :: Proxy s) "-i") >>
-             (return $ ComplexAbsolute (SReal Plus (UInt $ UInteger 0 0)) (SReal Minus (UInt $ UInteger 1 0)))) <|>
-            withRealPart <|> noRealPart (SReal Plus (UInt $ UInteger 0 0))
-  where withRealPart = do
-          n1 <- real r
-          c <- optional (char '@' <|> char '+' <|> char '-' <|> char 'i')
-          case c of
-            Nothing -> return $ ComplexReal n1
-            Just '@' -> do
-              n2 <- real r
-              return $ ComplexAngle n1 n2
-            Just 'i' -> return $ ComplexAbsolute (SReal Plus (UInt $ UInteger 0 0)) n1
-            Just '+' -> noRealPart' Plus n1
-            Just _ -> noRealPart' Minus n1
-          
-        noRealPart n1 = do
-          s <- (char '-' >> return Minus) <|> (char '+' >> return Plus)
-          noRealPart' s n1
+complex r = do
+  ms <- optional sign
+  case ms of
+    Nothing -> complex' Plus
+    Just s -> i s <|> complex' s
 
-        noRealPart' s n1 = do
-          u <- optional (ureal r)
-          _ <- char 'i'
-          case u of
-            Nothing -> return $ ComplexAbsolute n1 (SReal s (UInt $ UInteger 1 0))
-            Just n2 -> return $ ComplexAbsolute n1 (SReal s n2)
+  where
+    -- Parser for +i and -i
+    i s = char 'i' >> (return $ ComplexAbsolute (SReal Plus (UInt $ UInteger 0 0)) (SReal s (UInt $ UInteger 1 0)))
+
+    -- Parser for complex except +i and -i
+    complex' sr = do
+      -- First parse a number
+      n1 <- ureal r
+      -- Check if the number is followed by any of these characters
+      c <- optional (char '@' <|> char '+' <|> char '-' <|> char 'i')
+      case c of
+          -- Plain real number
+          Nothing -> return $ ComplexReal (SReal sr n1)
+          -- Complex angular number
+          Just '@' -> do
+            n2 <- real r
+            return $ ComplexAngle (SReal sr n1) n2
+          -- Pure imaginary number
+          Just 'i' -> return $ ComplexAbsolute (SReal Plus (UInt $ UInteger 0 0)) (SReal sr n1)
+          -- Real + Imaginary number
+          Just '+' -> imaginaryPart (SReal sr n1) Plus
+          Just _ -> imaginaryPart (SReal sr n1) Minus
+  
+    imaginaryPart realN si = do
+      u <- optional (ureal r)
+      _ <- char 'i'
+      case u of
+        Nothing -> return $ ComplexAbsolute realN (SReal si (UInt $ UInteger 1 0))
+        Just n2 -> return $ ComplexAbsolute realN (SReal si n2)
 
 real :: (MonadParsec e s m, Token s ~ Char) => Radix -> m SReal
 real r = do
@@ -398,7 +406,7 @@ radix =
   (chunk (tokensToChunk (Proxy :: Proxy s) "#d") >> return R10) <|>
   (chunk (tokensToChunk (Proxy :: Proxy s) "#x") >> return R16)
   
-udigit :: forall e s m . (MonadParsec e s m, Token s ~ Char) => Radix -> m Integer
+udigit :: forall e s m a . (MonadParsec e s m, Token s ~ Char, Integral a) => Radix -> m a
 udigit r = do
   case r of
     R2 -> ML.binary
