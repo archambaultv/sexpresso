@@ -249,6 +249,9 @@ hasPounds :: UInteger -> Bool
 hasPounds (UInteger _) = False
 hasPounds _ = True
 
+isInexactI :: UInteger -> Bool
+isInexactI = hasPounds
+
 data Precision = PDefault | PShort | PSingle | PDouble | PLong
                deriving (Eq, Show)
 
@@ -260,27 +263,38 @@ data SReal = SInteger Sign UInteger
            | SDecimal Sign UInteger UInteger (Maybe Suffix)
            deriving (Eq, Show)
 
+isInexactR :: SReal -> Bool
+isInexactR (SInteger _ i) = isInexactI i
+isInexactR (SRational _ i1 i2) = isInexactI i1 || isInexactI i2
+isInexactR (SDecimal _ _ _ _) = True
+
 data Complex = CReal SReal
              | CAngle SReal SReal
              | CAbsolute SReal SReal
              deriving (Eq, Show)
 
+isInexact :: Complex -> Bool
+isInexact (CReal s) = isInexactR s
+isInexact (CAngle s1 s2) = isInexactR s1 || isInexactR s2
+isInexact (CAbsolute s1 s2) = isInexactR s1 || isInexactR s2
+
 -- From R5RS 6.4.2 A numerical constant may be specified to be either
 -- exact orinexact by a prefix.  The prefixes are#efor exact, and#ifor
 -- inexact.  An exactness prefix may appear before or afterany radix
--- prefix that is used.  If the written representationof a number has
--- no exactness prefix, the constant may beeither inexact or exact.
--- It is inexact if it contains a decimalpoint, an exponent, or a “#”
--- character in the place of adigit, otherwise it is exact.
+-- prefix that is used.  If the written representation of a number has
+-- no exactness prefix, the constant may be either inexact or exact.
+-- It is inexact if it contains a decimal point, an exponent, or a “#”
+-- character in the place of a digit, otherwise it is exact.
 
-data SchemeNumber = SchemeNumber (Maybe Exactness) Complex
+data SchemeNumber = SchemeNumber Exactness Complex
                   deriving (Eq, Show)
 
 number :: (MonadParsec e s m, Token s ~ Char) => m SchemeNumber
 number = do
   (r, e) <- prefix
   c <- complex (fromMaybe R10 r)
-  return $ SchemeNumber e c
+  let e' = fromMaybe (if isInexact c then Inexact else Exact) e
+  return $ SchemeNumber e'  c
  
 complex :: forall e s m . (MonadParsec e s m, Token s ~ Char) => Radix -> m Complex
 complex r = do
