@@ -64,15 +64,19 @@ data SchemeToken = TBoolean Bool
 
 tokenParser :: (MonadParsec e s m, Token s ~ Char) => m SchemeToken
 tokenParser = (boolean >>= return . TBoolean) <|>
-              (number >>= return . TNumber) <|>
+              -- character must come before number
               (character >>= return . TChar) <|>
               (stringParser >>= return . TString) <|>
               (identifier >>= return . TIdentifier) <|>
               (quote >> return TQuote) <|>
               (quasiquote >> return TQuasiquote) <|>
+              -- commaAt must come before comma
+              (commaAt >> return TCommaAt) <|> 
               (comma >> return TComma) <|>
-              (commaAt >> return TCommaAt) <|>
+              -- We must try number because it can conflict with the dot ex : .2 and (a . b)
+              (try number >>= return . TNumber) <|>
               (dot >> return TDot)
+              
 
 
 spacingRule :: SchemeToken -> SpacingRule
@@ -127,7 +131,7 @@ sexpr2Datum ((A TComma) : xs) = do
   xs' <- sexpr2Datum xs
   if null xs'
   then Left "Expecting a datum after the comma."
-  else return $ DQuote (head xs') : tail xs'
+  else return $ DComma (head xs') : tail xs'
 sexpr2Datum ((A TCommaAt) : xs) = do
   xs' <- sexpr2Datum xs
   if null xs'
