@@ -1,3 +1,18 @@
+-- |
+-- Module      :  Data.SExpresso.SExpr
+-- Copyright   :  © 2019 Vincent Archambault
+-- License     :  0BSD
+--
+-- Maintainer  :  Vincent Archambault <archambault.v@gmail.com>
+-- Stability   :  experimental
+--
+-- Module for parsing the Scheme R5RS language.
+--
+-- Scheme R5RS s-expressions are parsed as @'SExpr' 'SExprType'
+-- 'SchemeToken'@.  Such s-expressions can be converted into a Scheme
+-- R5RS datum (see 'Datum') by the function 'sexpr2Datum'.
+
+
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -6,34 +21,56 @@
 -- as defined in section 7 of the report
 -- The library does parse tab and \r\n and whitespace
 module Data.SExpresso.Language.SchemeR5RS (
+  -- * SchemeToken and Datum related data types and functions 
+  SExprType(..),
   SchemeToken(..),
   tokenParser,
-
-  SExprType(..),
   sexpr,
-  
+
+  Datum(..),
+  sexpr2Datum,
+
+  -- * Scheme R5RS whitespace parsers
   whitespace,
   comment,
   interTokenSpace,
   interTokenSpace1,
+
+  -- * Individual parser for each of the constructors of SchemeToken
   identifier,
   boolean,
   character,
   stringParser,
+  quote,
+  quasiquote,
+  comma,
+  commaAt,
+  dot,
 
+  -- ** Scheme Number
+  --
+  -- | Scheme R5RS numbers are quite exotic. They can have exactness
+  -- prefix, radix prefix and the pound sign (#) can replace a
+  -- digit. On top of that, you can define integer, rational, decimal
+  -- and complex numbers of arbitrary precision. Decimal numbers can
+  -- also have a suffix indicating the machine precision.
+  --
+  -- Since Haskell does not have native types to express this
+  -- complexity, this module defines the 'SchemeNumber' data type to
+  -- encode the parsed number. User of this module can then convert a
+  -- 'SchemeNumber' object to a more appropriate data type according
+  -- to their needs.
+  SchemeNumber(..),
   Exactness(..),
+  Complex(..),
+  SReal(..),
   Sign(..),
-  Pounds,
   UInteger(..),
+  Pounds,
   Precision(..),
   Suffix(..),
-  SReal(..),
-  Complex(..),
-  SchemeNumber(..),
   number,
 
-  Datum(..),
-  sexpr2Datum,
 
   ) where
 
@@ -50,18 +87,35 @@ import qualified Text.Megaparsec.Char.Lexer as ML
 import Data.SExpresso.SExpr
 import Data.SExpresso.Parse
 
-data SchemeToken = TBoolean Bool
-                 | TNumber SchemeNumber
-                 | TChar Char
-                 | TString T.Text
-                 | TIdentifier T.Text
-                 | TQuote
-                 | TQuasiquote
-                 | TComma
-                 | TCommaAt
-                 | TDot
-                 deriving (Eq, Show)
+-- | The 'SchemeToken' data type defines the atoms of an Scheme R5RS
+-- s-expression. An @'SExpr' 'SExprType' 'SchemeToken'@ object
+-- containning the atoms 'TQuote', 'TQuasiquote', 'TComma', 'TCommaAt'
+-- and 'TDot' need futher processing in order to get what the R5RS
+-- report calls a datum. See also 'Datum'.
+data SchemeToken =
+  -- | A boolean.
+  TBoolean Bool
+  -- | A number. See 'SchemeNumber'.
+  | TNumber SchemeNumber
+  -- | A unicode character.
+  | TChar Char
+  -- | A string.
+  | TString T.Text
+  -- | A valid R5RS identifier.
+  | TIdentifier T.Text
+  -- | The quote (') symbol.
+  | TQuote
+  -- | The quasiquote (`) symbol.
+  | TQuasiquote
+  -- | The comma (,) symbol.
+  | TComma
+  -- | The comma at (,\@) symbol.
+  | TCommaAt
+  -- | The dot (.) symbol.
+  | TDot
+  deriving (Eq, Show)
 
+-- | The 'tokenParser' parses a 'SchemeToken'
 tokenParser :: (MonadParsec e s m, Token s ~ Char) => m SchemeToken
 tokenParser = (boolean >>= return . TBoolean) <|>
               -- character must come before number
@@ -87,15 +141,34 @@ spacingRule TComma = SOptional
 spacingRule TCommaAt = SOptional
 spacingRule _ = SMandatory
 
-data SExprType = STList | STVector
-               deriving (Eq, Show)
+-- | Scheme R5RS defines two types of s-expressions. Standard list
+-- beginning with '(' and vector beginning with '#('. The 'SExprType'
+-- data type indicates which one was parsed.
+data SExprType =
+  -- | A standard list
+  STList
+  -- | A vector
+  | STVector
+  deriving (Eq, Show)
 
+-- | The 'sexpr' defines a 'SExprParser' to parse a Scheme R5RS
+-- s-expression as an @'SExpr' 'SExprType' 'SchemeToken'@. If you also
+-- want source position see the 'withLocation' function.
+--
+-- Space is optional before and after the following tokens:
+--
+-- * 'TString'
+-- * 'TQuote'
+-- * 'TQuasiquote'
+-- * 'TComma'
+-- * 'TCommaAt'
 sexpr :: forall e s m . (MonadParsec e s m, Token s ~ Char) => SExprParser m SExprType SExprType SchemeToken
 sexpr =
   let sTag = (single '(' >> return STList) <|> (chunk (tokensToChunk (Proxy :: Proxy s) "#(") >> return STVector)
       eTag = \t -> single ')' >> return t
   in SExprParser sTag eTag tokenParser interTokenSpace1 (mkSpacingRule spacingRule)
-          
+
+-- | The 'Datum' data type implements the Scheme R5RS definition of a Datum. See also 'sexpr2Datum'.
 data Datum = DBoolean Bool
            | DNumber SchemeNumber
            | DChar Char
@@ -110,6 +183,13 @@ data Datum = DBoolean Bool
            | DVector [Datum]
            deriving (Eq, Show)
 
+-- | The 'sexpr2Datum' function takes a list of 'SchemeToken' and
+-- returns a list of 'Datum'. In case of failure it will report an
+-- error, hence the 'Either' data type in the signature.
+--
+-- As defined in the Scheme R5RS report, the 'TQuote', 'TQuasiquote',
+-- 'TComma', 'TCommaAt' and 'TDot' tokens must be followed by another
+-- token.
 sexpr2Datum :: [SExpr SExprType SchemeToken] -> Either String [Datum]
 sexpr2Datum [] = Right []
 sexpr2Datum ((A (TBoolean x)) : xs) = (:) <$> pure (DBoolean x) <*> sexpr2Datum xs
@@ -157,11 +237,14 @@ sexpr2Datum ((SList STList ls) : xs) = (:) <$> (listToken2Datum ls) <*> sexpr2Da
 
 
 ------------------------- Whitespace and comments -------------------------
+-- | The 'whitespace' parser  parses one space, tab or end of line (\\n and \\r\\n).
 whitespace :: (MonadParsec e s m, Token s ~ Char) => m ()
 whitespace = (char ' ' >> return ()) <|>
              (char '\t' >> return ()) <|>
              (eol >> return ())
 
+-- | The 'comment' parser parses a semi-colon (;) character and
+-- everything until the end of line included.
 comment :: (MonadParsec e s m, Token s ~ Char) => m ()
 comment = char ';' >>
           takeWhileP Nothing (\c -> c /= '\n' && c /= '\r') >>
@@ -170,15 +253,17 @@ comment = char ';' >>
 atmosphere :: (MonadParsec e s m, Token s ~ Char) => m ()
 atmosphere = whitespace <|> comment
 
+-- | The 'interTokenSpace' parser parses zero or more whitespace or comment.
 interTokenSpace :: (MonadParsec e s m, Token s ~ Char) => m ()
 interTokenSpace = many atmosphere >> return ()
 
+-- | The 'interTokenSpace1' parser parses one or more whitespace or comment.
 interTokenSpace1 :: (MonadParsec e s m, Token s ~ Char) => m ()
 interTokenSpace1 = some atmosphere >> return ()
 
 ------------------------- Identifier -------------------------
 
--- FixMe : Must not parse +i, -i, etc ... (they are numbers)
+-- | The 'identifier' parser parses a Scheme R5RS identifier.
 identifier :: forall e s m . (MonadParsec e s m, Token s ~ Char) => m T.Text
 identifier = standardIdentifier <|> peculiarIdentifier
   where standardIdentifier = do
@@ -198,12 +283,14 @@ peculiarIdentifier = (single '+' >> return "+") <|>
                      (chunk (tokensToChunk (Proxy :: Proxy s) "...") >> return "...")
 
 ------------------------- Booleans -------------------------
+-- | The 'boolean' parser parses a Scheme R5RS boolean (\#t or \#f).
 boolean :: forall e s m . (MonadParsec e s m, Token s ~ Char) => m Bool
 boolean = (chunk (tokensToChunk (Proxy :: Proxy s) "#t") >> return True) <|>
           (chunk (tokensToChunk (Proxy :: Proxy s) "#f") >> return False)
 
 
 ------------------------- Character -------------------------
+-- | The 'character' parser parses a Scheme R5RS character.
 character :: forall e s m . (MonadParsec e s m, Token s ~ Char) => m Char
 character = do
   _ <- chunk (tokensToChunk (Proxy :: Proxy s) "#\\")
@@ -212,6 +299,7 @@ character = do
    anySingle
 
 ------------------------- String -------------------------
+-- | The 'stringParser' parser parses a Scheme R5RS character.
 stringParser :: forall e s m . (MonadParsec e s m, Token s ~ Char) => m T.Text
 stringParser = do
   _ <- char '"'
@@ -235,19 +323,46 @@ stringParser = do
 data Radix = R2 | R8 | R10 | R16
            deriving (Eq, Show)
 
+-- | A Scheme R5RS number is either exact or inexact. The paragraph
+-- 6.4.2 from the R5RS report should clarify the meaning of exact and
+-- inexact :
+--
+-- \"\"\"A numerical constant may be specified to be either
+-- exact or inexact by a prefix.  The prefixes are \#e for exact, and \#i
+-- for inexact.  An exactness prefix may appear before or after any
+-- radix prefix that is used.  If the written representation of a
+-- number has no exactness prefix, the constant may be either inexact
+-- or exact.  It is inexact if it contains a decimal point, an
+-- exponent, or a \“#\” character in the place of a digit, otherwise it
+-- is exact.\"\"\"
 data Exactness = Exact | Inexact
                deriving (Eq, Show)
 
+-- | The 'Sign' datatype indicates if a number is positive ('Plus') or negative ('Minus')
 data Sign = Plus | Minus
           deriving (Eq, Show)
 
--- Indicates the number of # sign in the number
+-- | A Scheme R5RS number can have many # signs at the end. This type alias
+-- indicates the number of # signs parsed.
 type Pounds = Integer
 
-data UInteger = UInteger Integer -- Only digit
-              | UIntPounds Integer Pounds -- Digit with some #
-              | UPounds Pounds -- Only #
-              deriving (Eq, Show)
+-- | A Scheme R5RS unsigned integer can be written in three ways.
+--
+-- * With digits only
+-- * With digits and # signs
+-- * With only # signs in some special context.
+data UInteger =
+  -- | Integer made only of digits
+  UInteger Integer
+  -- | Integer made of digits and #. The first argument is the number
+  -- that was parsed and the second the number of # signs. For
+  -- example, 123## is represented as @UIntPounds 123 2@. Do not take
+  -- the first argument as a good approximation of the number. It
+  -- needs to be shifted by the number of pounds.
+  | UIntPounds Integer Pounds
+  -- | Integer made only of #. It can only appear as the third argument in numbers of the form @'SDecimal' _ _ _ _@.
+  | UPounds Pounds
+  deriving (Eq, Show)
 
 hasPounds :: UInteger -> Bool
 hasPounds (UInteger _) = False
@@ -256,43 +371,64 @@ hasPounds _ = True
 isInexactI :: UInteger -> Bool
 isInexactI = hasPounds
 
-data Precision = PDefault | PShort | PSingle | PDouble | PLong
-               deriving (Eq, Show)
+-- | Scheme R5RS defines 5 types of machine precision for a decimal
+-- number. The machine precision is specified in the suffix (see
+-- 'Suffix').
+data Precision =
+  -- | Suffix starting with e.
+  PDefault |
+  -- | Suffix starting with s.
+  PShort |
+  -- | Suffix starting with f.
+  PSingle |
+  -- | Suffix starting with d.
+  PDouble |
+  -- | Suffix starting with l.
+  PLong
+  deriving (Eq, Show)
 
+-- | The 'Suffix' data type represents the suffix for a Scheme R5RS
+-- decimal number. It is a based 10 exponent.
 data Suffix = Suffix Precision Sign Integer
             deriving (Eq, Show)
 
-data SReal = SInteger Sign UInteger
-           | SRational Sign UInteger UInteger
-           | SDecimal Sign UInteger UInteger (Maybe Suffix)
-           deriving (Eq, Show)
+-- | The 'SReal' data type represents a Scheme R5RS real number.
+data SReal =
+  -- | A signed integer.
+  SInteger Sign UInteger
+  -- | A signed rational. The first number is the numerator and the
+  -- second one the denominator.
+  | SRational Sign UInteger UInteger
+  -- | A signed decimal number. The first number appears before the
+  -- dot, the second one after the dot.
+  | SDecimal Sign UInteger UInteger (Maybe Suffix)
+  deriving (Eq, Show)
 
 isInexactR :: SReal -> Bool
 isInexactR (SInteger _ i) = isInexactI i
 isInexactR (SRational _ i1 i2) = isInexactI i1 || isInexactI i2
 isInexactR (SDecimal _ _ _ _) = True
 
-data Complex = CReal SReal
-             | CAngle SReal SReal
-             | CAbsolute SReal SReal
-             deriving (Eq, Show)
+-- | The 'Complex' data type represents a Scheme R5RS complex number.
+data Complex =
+  -- | A real number.
+  CReal SReal
+  -- | A complex number in angular notation.
+  | CAngle SReal SReal
+  -- | A complex number in absolute notation.
+  | CAbsolute SReal SReal
+  deriving (Eq, Show)
 
 isInexact :: Complex -> Bool
 isInexact (CReal s) = isInexactR s
 isInexact (CAngle s1 s2) = isInexactR s1 || isInexactR s2
 isInexact (CAbsolute s1 s2) = isInexactR s1 || isInexactR s2
 
--- From R5RS 6.4.2 A numerical constant may be specified to be either
--- exact orinexact by a prefix.  The prefixes are#efor exact, and#ifor
--- inexact.  An exactness prefix may appear before or afterany radix
--- prefix that is used.  If the written representation of a number has
--- no exactness prefix, the constant may be either inexact or exact.
--- It is inexact if it contains a decimal point, an exponent, or a “#”
--- character in the place of a digit, otherwise it is exact.
-
+-- | A Scheme 'R5RS' is an exact or inexact complex number.
 data SchemeNumber = SchemeNumber Exactness Complex
                   deriving (Eq, Show)
 
+-- | The 'number' parser parses a Scheme R5RS number.
 number :: (MonadParsec e s m, Token s ~ Char) => m SchemeNumber
 number = do
   (r, e) <- prefix
@@ -461,17 +597,22 @@ suffix = do
   return $ Suffix p s n
 
 ------------------------- Other tokens -------------------------
+-- | The 'quote' parser parses a quote character (').
 quote :: (MonadParsec e s m, Token s ~ Char) => m Char
 quote = char '\''
 
+-- | The 'quasiquote' parser parses a quasiquote character (`).
 quasiquote :: (MonadParsec e s m, Token s ~ Char) => m Char
 quasiquote = char '`'
 
+-- | The 'comma' parser parses a comma (,).
 comma :: (MonadParsec e s m, Token s ~ Char) => m Char
 comma = char ','
 
-commaAt :: forall e s m . (MonadParsec e s m, Token s ~ Char) => m String
+-- | The 'commaAt' parser parses a comma followed by \@ (,\@).
+commaAt :: forall e s m . (MonadParsec e s m, Token s ~ Char) => m T.Text
 commaAt = chunk (tokensToChunk (Proxy :: Proxy s) ",@") >> return ",@"
 
+-- | The 'dot' parser parses a single dot character (.).
 dot :: (MonadParsec e s m, Token s ~ Char) => m Char
 dot = char '.'
