@@ -322,7 +322,7 @@ complex r = do
             return $ CAngle n1 n2
           -- Pure imaginary number
           Just 'i' -> return $ CAbsolute (SInteger Plus (UInteger 0)) n1
-          -- Real + Imaginary number
+          -- Real +/- Imaginary number
           Just '+' -> imaginaryPart n1 Plus
           Just _ -> imaginaryPart n1 Minus
   
@@ -439,7 +439,7 @@ udigit r = do
     R2 -> ML.binary
     R8 -> ML.octal
     R10 -> ML.decimal
-    R16 -> hexadecimal
+    R16 -> hexadecimal -- ML.hexadecimal also parses uppercase "ABCDEF"
   where hexadecimal = mkNum
                       <$> takeWhile1P Nothing (\c -> c `elem` ("0123456789abcdef" :: String))
                       <?> "hexadecimal integer"
