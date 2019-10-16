@@ -133,161 +133,150 @@ r5rsTestTree = testGroup "Language/R5RS.hs" $ [
       ],
     testGroup "number" $ [
       let s = "-1" in testCase (show s) $ tparse R5.number s @?= (Right $ SchemeNumber Nothing $
-                      ComplexReal (SReal Minus (UInt $ UInteger 1 0))),
+                      CReal (SInteger Minus (UInteger 1))),
       let s = "-0" in testCase (show s) $ tparse R5.number s @?= (Right $ SchemeNumber Nothing $
-                      ComplexReal (SReal Minus (UInt $ UInteger 0 0))),
+                      CReal (SInteger Minus (UInteger 0 ))),
       let s = "0" in testCase (show s) $ tparse R5.number s @?= (Right $ SchemeNumber Nothing $
-                      ComplexReal (SReal Plus (UInt $ UInteger 0 0))),
+                      CReal (SInteger Plus (UInteger 0))),
       let s = "1" in testCase (show s) $ tparse R5.number s @?= (Right $ SchemeNumber Nothing $
-                      ComplexReal (SReal Plus (UInt $ UInteger 1 0))),
+                      CReal (SInteger Plus (UInteger 1))),
 
       
       let s = "#e1" in testCase (show s) $ tparse R5.number s @?= (Right $ SchemeNumber (Just Exact) $
-                      ComplexReal (SReal Plus (UInt $ UInteger 1 0))),
+                      CReal (SInteger Plus (UInteger 1))),
         
       let s = "#i1" in testCase (show s) $ tparse R5.number s @?= (Right $ SchemeNumber (Just Inexact) $
-                      ComplexReal (SReal Plus (UInt $ UInteger 1 0))),
+                      CReal (SInteger Plus (UInteger 1))),
         
       let s = "#b1" in testCase (show s) $ tparse R5.number s @?= (Right $ SchemeNumber Nothing $
-                      ComplexReal (SReal Plus (UInt $ UInteger 1 0))),
+                      CReal (SInteger Plus (UInteger 1))),
       let s = "#o1" in testCase (show s) $ tparse R5.number s @?= (Right $ SchemeNumber Nothing $
-                      ComplexReal (SReal Plus (UInt $ UInteger 1 0))),
+                      CReal (SInteger Plus (UInteger 1))),
       let s = "#d1" in testCase (show s) $ tparse R5.number s @?= (Right $ SchemeNumber Nothing $
-                      ComplexReal (SReal Plus (UInt $ UInteger 1 0))),
+                      CReal (SInteger Plus (UInteger 1))),
       let s = "#x1" in testCase (show s) $ tparse R5.number s @?= (Right $ SchemeNumber Nothing $
-                      ComplexReal (SReal Plus (UInt $ UInteger 1 0))),
+                      CReal (SInteger Plus (UInteger 1))),
       let s = "#xa" in testCase (show s) $ tparse R5.number s @?= (Right $ SchemeNumber Nothing $
-                                                                   ComplexReal (SReal Plus (UInt $ UInteger 10 0))),
+                                                                   CReal (SInteger Plus (UInteger 10))),
       let s = "#xb" in testCase (show s) $ tparse R5.number s @?= (Right $ SchemeNumber Nothing $
-                      ComplexReal (SReal Plus (UInt $ UInteger 11 0))),
+                      CReal (SInteger Plus (UInteger 11))),
       let s = "#xc" in testCase (show s) $ tparse R5.number s @?= (Right $ SchemeNumber Nothing $
-                      ComplexReal (SReal Plus (UInt $ UInteger 12 0))),
+                      CReal (SInteger Plus (UInteger 12))),
       let s = "#xd" in testCase (show s) $ tparse R5.number s @?= (Right $ SchemeNumber Nothing $
-                      ComplexReal (SReal Plus (UInt $ UInteger 13 0))),
+                      CReal (SInteger Plus (UInteger 13))),
       let s = "#xe" in testCase (show s) $ tparse R5.number s @?= (Right $ SchemeNumber Nothing $
-                      ComplexReal (SReal Plus (UInt $ UInteger 14 0))),
+                      CReal (SInteger Plus (UInteger 14))),
       let s = "#xf" in testCase (show s) $ tparse R5.number s @?= (Right $ SchemeNumber Nothing $
-                      ComplexReal (SReal Plus (UInt $ UInteger 15 0))),
+                      CReal (SInteger Plus (UInteger 15))),
       let s = "-0001" in testCase (show s) $ tparse R5.number s @?= (Right $ SchemeNumber Nothing $
-                      ComplexReal (SReal Minus (UInt $ UInteger 1 0))),
+                      CReal (SInteger Minus (UInteger 1))),
       let s = "-0000" in testCase (show s) $ tparse R5.number s @?= (Right $ SchemeNumber Nothing $
-                      ComplexReal (SReal Minus (UInt $ UInteger 0 0))),
+                      CReal (SInteger Minus (UInteger 0))),
       let s = "0000" in testCase (show s) $ tparse R5.number s @?= (Right $ SchemeNumber Nothing $
-                      ComplexReal (SReal Plus (UInt $ UInteger 0 0))),
+                      CReal (SInteger Plus (UInteger 0))),
       let s = "0001" in testCase (show s) $ tparse R5.number s @?= (Right $ SchemeNumber Nothing $
-                      ComplexReal (SReal Plus (UInt $ UInteger 1 0))),
+                      CReal (SInteger Plus (UInteger 1))),
 
       let s = "-1#" in testCase (show s) $ tparse R5.number s @?= (Right $ SchemeNumber Nothing $
-                      ComplexReal (SReal Minus (UInt $ UInteger 1 1))),
+                      CReal (SInteger Minus (UIntPounds 1 1))),
       let s = "-0#" in testCase (show s) $ tparse R5.number s @?= (Right $ SchemeNumber Nothing $
-                      ComplexReal (SReal Minus (UInt $ UInteger 0 1))),
+                      CReal (SInteger Minus (UIntPounds 0 1))),
       let s = "0#" in testCase (show s) $ tparse R5.number s @?= (Right $ SchemeNumber Nothing $
-                      ComplexReal (SReal Plus (UInt $ UInteger 0 1))),
+                      CReal (SInteger Plus (UIntPounds 0 1))),
       let s = "1#" in testCase (show s) $ tparse R5.number s @?= (Right $ SchemeNumber Nothing $
-                      ComplexReal (SReal Plus (UInt $ UInteger 1 1))),
+                      CReal (SInteger Plus (UIntPounds 1 1))),
 
       let s = "-1###" in testCase (show s) $ tparse R5.number s @?= (Right $ SchemeNumber Nothing $
-                      ComplexReal (SReal Minus (UInt $ UInteger 1 3))),
+                      CReal (SInteger Minus (UIntPounds 1 3))),
       let s = "-0###" in testCase (show s) $ tparse R5.number s @?= (Right $ SchemeNumber Nothing $
-                      ComplexReal (SReal Minus (UInt $ UInteger 0 3))),
+                      CReal (SInteger Minus (UIntPounds 0 3))),
       let s = "0###" in testCase (show s) $ tparse R5.number s @?= (Right $ SchemeNumber Nothing $
-                      ComplexReal (SReal Plus (UInt $ UInteger 0 3))),
+                      CReal (SInteger Plus (UIntPounds 0 3))),
       let s = "1###" in testCase (show s) $ tparse R5.number s @?= (Right $ SchemeNumber Nothing $
-                      ComplexReal (SReal Plus (UInt $ UInteger 1 3))),
+                      CReal (SInteger Plus (UIntPounds 1 3))),
 
       let s = "-12345" in testCase (show s) $ tparse R5.number s @?= (Right $ SchemeNumber Nothing $
-                      ComplexReal (SReal Minus (UInt $ UInteger 12345 0))),
+                      CReal (SInteger Minus (UInteger 12345))),
       let s = "12345" in testCase (show s) $ tparse R5.number s @?= (Right $ SchemeNumber Nothing $
-                      ComplexReal (SReal Plus (UInt $ UInteger 12345 0))),
+                      CReal (SInteger Plus (UInteger 12345))),
 
       let s = "-12345/5" in testCase (show s) $ tparse R5.number s @?= (Right $ SchemeNumber Nothing $
-                      ComplexReal (SReal Minus (URational (UInteger 12345 0) (UInteger 5 0)))),
+                      CReal (SRational Minus (UInteger 12345) (UInteger 5))),
       let s = "12345/5" in testCase (show s) $ tparse R5.number s @?= (Right $ SchemeNumber Nothing $
-                      ComplexReal (SReal Plus (URational (UInteger 12345 0) (UInteger 5 0)))),
+                      CReal (SRational Plus (UInteger 12345) (UInteger 5))),
       let s = "-12345#/5" in testCase (show s) $ tparse R5.number s @?= (Right $ SchemeNumber Nothing $
-                      ComplexReal (SReal Minus (URational (UInteger 12345 1) (UInteger 5 0)))),
+                      CReal (SRational Minus (UIntPounds 12345 1) (UInteger 5))),
       let s = "12345/5##" in testCase (show s) $ tparse R5.number s @?= (Right $ SchemeNumber Nothing $
-                      ComplexReal (SReal Plus (URational (UInteger 12345 0) (UInteger 5 2)))),
+                      CReal (SRational Plus (UInteger 12345) (UIntPounds 5 2))),
       let s = "-12345##/5" in testCase (show s) $ tparse R5.number s @?= (Right $ SchemeNumber Nothing $
-                      ComplexReal (SReal Minus (URational (UInteger 12345 2) (UInteger 5 0)))),
+                      CReal (SRational Minus (UIntPounds 12345 2) (UInteger 5))),
       let s = "12345####/5#" in testCase (show s) $ tparse R5.number s @?= (Right $ SchemeNumber Nothing $
-                      ComplexReal (SReal Plus (URational (UInteger 12345 4) (UInteger 5 1)))),
+                      CReal (SRational Plus (UIntPounds 12345 4) (UIntPounds 5 1))),
 
 
       let s = "-12345.0" in testCase (show s) $ tparse R5.number s @?= (Right $ SchemeNumber Nothing $
-                      ComplexReal (SReal Minus (UDecimal (UInteger 12345 0)
-                                                         (Left (UInteger 0 0))
-                                                         Nothing))),
+                      CReal (SDecimal Minus (UInteger 12345) (UInteger 0) Nothing)),
       let s = ".0" in testCase (show s) $ tparse R5.number s @?= (Right $ SchemeNumber Nothing $
-                      ComplexReal (SReal Plus (UDecimal (UInteger 0 0)
-                                                         (Left (UInteger 0 0))
-                                                         Nothing))),
+                      CReal (SDecimal Plus (UInteger 0) (UInteger 0) Nothing)),
       let s = "0." in testCase (show s) $ tparse R5.number s @?= (Right $ SchemeNumber Nothing $
-                      ComplexReal (SReal Plus (UDecimal (UInteger 0 0)
-                                                         (Left (UInteger 0 0))
-                                                         Nothing))),
+                      CReal (SDecimal Plus (UInteger 0) (UInteger 0) Nothing)),
         
       let s = "0.###" in testCase (show s) $ tparse R5.number s @?= (Right $ SchemeNumber Nothing $
-                      ComplexReal (SReal Plus (UDecimal (UInteger 0 0)
-                                                         (Left (UInteger 0 3))
-                                                         Nothing))),
+                      CReal (SDecimal Plus (UInteger 0) (UPounds 3) Nothing)),
       let s = "-.569" in testCase (show s) $ tparse R5.number s @?= (Right $ SchemeNumber Nothing $
-                      ComplexReal (SReal Minus (UDecimal (UInteger 0 0)
-                                                         (Left (UInteger 569 0))
-                                                         Nothing))),
+                      CReal (SDecimal Minus (UInteger 0) (UInteger 569) Nothing)),
       let s = "1e10" in testCase (show s) $ tparse R5.number s @?= (Right $ SchemeNumber Nothing $
-                      ComplexReal (SReal Plus (UDecimal (UInteger 1 0)
-                                                         (Left (UInteger 0 0))
-                                                         (Just $ Suffix PDefault Plus 10)))),
+                      CReal (SDecimal Plus (UInteger 1)
+                                                         (UInteger 0)
+                                                         (Just $ Suffix PDefault Plus 10))),
       let s = "1e-10" in testCase (show s) $ tparse R5.number s @?= (Right $ SchemeNumber Nothing $
-                      ComplexReal (SReal Plus (UDecimal (UInteger 1 0)
-                                                         (Left (UInteger 0 0))
-                                                         (Just $ Suffix PDefault Minus 10)))),
+                      CReal (SDecimal Plus (UInteger 1)
+                                                         (UInteger 0)
+                                                         (Just $ Suffix PDefault Minus 10))),
       let s = "1s10" in testCase (show s) $ tparse R5.number s @?= (Right $ SchemeNumber Nothing $
-                      ComplexReal (SReal Plus (UDecimal (UInteger 1 0)
-                                                         (Left (UInteger 0 0))
-                                                         (Just $ Suffix PShort Plus 10)))),
+                      CReal (SDecimal Plus (UInteger 1)
+                                                         (UInteger 0)
+                                                         (Just $ Suffix PShort Plus 10))),
       let s = "1f10" in testCase (show s) $ tparse R5.number s @?= (Right $ SchemeNumber Nothing $
-                      ComplexReal (SReal Plus (UDecimal (UInteger 1 0)
-                                                         (Left (UInteger 0 0))
-                                                         (Just $ Suffix PSingle Plus 10)))),
+                      CReal (SDecimal Plus (UInteger 1)
+                                                         (UInteger 0)
+                                                         (Just $ Suffix PSingle Plus 10))),
       let s = "1d10" in testCase (show s) $ tparse R5.number s @?= (Right $ SchemeNumber Nothing $
-                      ComplexReal (SReal Plus (UDecimal (UInteger 1 0)
-                                                         (Left (UInteger 0 0))
-                                                         (Just $ Suffix PDouble Plus 10)))),
+                      CReal (SDecimal Plus (UInteger 1)
+                                                         (UInteger 0)
+                                                         (Just $ Suffix PDouble Plus 10))),
       let s = "1l10" in testCase (show s) $ tparse R5.number s @?= (Right $ SchemeNumber Nothing $
-                      ComplexReal (SReal Plus (UDecimal (UInteger 1 0)
-                                                         (Left (UInteger 0 0))
-                                                         (Just $ Suffix PLong Plus 10)))),
+                      CReal (SDecimal Plus (UInteger 1)
+                                                         (UInteger 0)
+                                                         (Just $ Suffix PLong Plus 10))),
         
       let s = "1+i" in testCase (show s) $ tparse R5.number s @?= (Right $ SchemeNumber Nothing $
-                      ComplexAbsolute (SReal Plus (UInt $ UInteger 1 0)) (SReal Plus (UInt $ UInteger 1 0))),
+                      CAbsolute (SInteger Plus (UInteger 1)) (SInteger Plus (UInteger 1))),
         
       let s = "1-i" in testCase (show s) $ tparse R5.number s @?= (Right $ SchemeNumber Nothing $
-                      ComplexAbsolute (SReal Plus (UInt $ UInteger 1 0)) (SReal Minus (UInt $ UInteger 1 0))),
+                      CAbsolute (SInteger Plus (UInteger 1)) (SInteger Minus (UInteger 1))),
 
       let s = "0.5+i" in testCase (show s) $ tparse R5.number s @?= (Right $ SchemeNumber Nothing $
-                      ComplexAbsolute (SReal Plus (UDecimal (UInteger 0 0)
-                                                    (Left (UInteger 5 0))
-                                                    Nothing)) (SReal Plus (UInt $ UInteger 1 0))),
+                      CAbsolute (SDecimal Plus (UInteger 0)
+                                                    (UInteger 5)
+                                                    Nothing) (SInteger Plus (UInteger 1))),
                                                                      
       let s = "-8i" in testCase (show s) $ tparse R5.number s @?= (Right $ SchemeNumber Nothing $
-                      ComplexAbsolute (SReal Plus (UInt $ UInteger 0 0)) (SReal Minus (UInt $ UInteger 8 0))),
+                      CAbsolute (SInteger Plus (UInteger 0)) (SInteger Minus (UInteger 8))),
 
       
       let s = "-8.25i" in testCase (show s) $ tparse R5.number s @?= (Right $ SchemeNumber Nothing $
-                      ComplexAbsolute (SReal Plus (UInt $ UInteger 0 0)) (SReal Minus (UDecimal (UInteger 8 0)
-                                                                                      (Left (UInteger 25 0))
-                                                                                      Nothing))),
+                      CAbsolute (SInteger Plus (UInteger 0)) (SDecimal Minus (UInteger 8)
+                                                                                      (UInteger 25)
+                                                                                      Nothing)),
       let s = "0@25" in testCase (show s) $ tparse R5.number s @?= (Right $ SchemeNumber Nothing $
-                      ComplexAngle (SReal Plus (UInt $ UInteger 0 0)) (SReal Plus (UInt $ UInteger 25 0))),
+                      CAngle (SInteger Plus (UInteger 0)) (SInteger Plus (UInteger 25))),
 
       let s = "1/4@-25" in testCase (show s) $ tparse R5.number s @?= (Right $ SchemeNumber Nothing $
-                      ComplexAngle (SReal Plus (URational (UInteger 1 0) (UInteger 4 0))) (SReal Minus (UInt $ UInteger 25 0))),
-
+                      CAngle (SRational Plus (UInteger 1) (UInteger 4)) (SInteger Minus (UInteger 25))),
 
       let s = "1#/4@-25##" in testCase (show s) $ tparse R5.number s @?= (Right $ SchemeNumber Nothing $
-                      ComplexAngle (SReal Plus (URational (UInteger 1 1) (UInteger 4 0))) (SReal Minus (UInt $ UInteger 25 2))),
+                      CAngle (SRational Plus (UIntPounds 1 1) (UInteger 4)) (SInteger Minus (UIntPounds 25 2))),
 
       let s = "#b3" in testCase (show s) $ (isLeft $ tparse R5.number s) @? "Parsing must fail on #b3",
       let s = "#o9" in testCase (show s) $ (isLeft $ tparse R5.number s) @? "Parsing must fail on #o9",
@@ -302,6 +291,7 @@ r5rsTestTree = testGroup "Language/R5RS.hs" $ [
       let s = "#x.1" in testCase (show s) $ (isLeft $ tparse R5.number s) @? "Parsing must fail on #x.1",
       
       let s = "123##.12" in testCase (show s) $ (isLeft $ tparse R5.number s) @? "Parsing must fail on 123##.12",
+      let s = "#" in testCase (show s) $ (isLeft $ tparse R5.number s) @? "Parsing must fail on #",
       let s = "#t" in testCase (show s) $ (isLeft $ tparse R5.number s) @? "Parsing must fail on #t",
       let s = "#f" in testCase (show s) $ (isLeft $ tparse R5.number s) @? "Parsing must fail on #f"
       ]

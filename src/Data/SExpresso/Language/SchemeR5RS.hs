@@ -21,14 +21,12 @@ module Data.SExpresso.Language.SchemeR5RS (
   character,
   stringParser,
 
-  Radix(..),
   Exactness(..),
   Sign(..),
   Pounds,
   UInteger(..),
   Precision(..),
   Suffix(..),
-  UReal(..),
   SReal(..),
   Complex(..),
   SchemeNumber(..),
@@ -239,14 +237,16 @@ data Exactness = Exact | Inexact
 data Sign = Plus | Minus
           deriving (Eq, Show)
 
--- The second integer indicates the number of # sign in the number
+-- Indicates the number of # sign in the number
 type Pounds = Integer
 
-data UInteger = UInteger Integer Pounds
+data UInteger = UInteger Integer -- Only digit
+              | UIntPounds Integer Pounds -- Digit with some #
+              | UPounds Pounds -- Only #
               deriving (Eq, Show)
 
 hasPounds :: UInteger -> Bool
-hasPounds (UInteger _ 0) = False
+hasPounds (UInteger _) = False
 hasPounds _ = True
 
 data Precision = PDefault | PShort | PSingle | PDouble | PLong
@@ -255,17 +255,14 @@ data Precision = PDefault | PShort | PSingle | PDouble | PLong
 data Suffix = Suffix Precision Sign Integer
             deriving (Eq, Show)
 
-data UReal = UDecimal UInteger (Either UInteger Pounds) (Maybe Suffix)
-           | URational UInteger UInteger
-           | UInt UInteger
+data SReal = SInteger Sign UInteger
+           | SRational Sign UInteger UInteger
+           | SDecimal Sign UInteger UInteger (Maybe Suffix)
            deriving (Eq, Show)
 
-data SReal = SReal Sign UReal
-           deriving (Eq, Show)
-
-data Complex = ComplexReal SReal
-             | ComplexAngle SReal SReal
-             | ComplexAbsolute SReal SReal
+data Complex = CReal SReal
+             | CAngle SReal SReal
+             | CAbsolute SReal SReal
              deriving (Eq, Show)
 
 -- From R5RS 6.4.2 A numerical constant may be specified to be either
@@ -294,42 +291,41 @@ complex r = do
 
   where
     -- Parser for +i and -i
-    i s = char 'i' >> (return $ ComplexAbsolute (SReal Plus (UInt $ UInteger 0 0)) (SReal s (UInt $ UInteger 1 0)))
+    i s = char 'i' >> (return $ CAbsolute (SInteger Plus (UInteger 0)) (SInteger s (UInteger 1)))
 
     -- Parser for complex except +i and -i
     complex' sr = do
       -- First parse a number
-      n1 <- ureal r
+      n1 <- ureal r sr
       -- Check if the number is followed by any of these characters
       c <- optional (char '@' <|> char '+' <|> char '-' <|> char 'i')
       case c of
           -- Plain real number
-          Nothing -> return $ ComplexReal (SReal sr n1)
+          Nothing -> return $ CReal n1
           -- Complex angular number
           Just '@' -> do
             n2 <- real r
-            return $ ComplexAngle (SReal sr n1) n2
+            return $ CAngle n1 n2
           -- Pure imaginary number
-          Just 'i' -> return $ ComplexAbsolute (SReal Plus (UInt $ UInteger 0 0)) (SReal sr n1)
+          Just 'i' -> return $ CAbsolute (SInteger Plus (UInteger 0)) n1
           -- Real + Imaginary number
-          Just '+' -> imaginaryPart (SReal sr n1) Plus
-          Just _ -> imaginaryPart (SReal sr n1) Minus
+          Just '+' -> imaginaryPart n1 Plus
+          Just _ -> imaginaryPart n1 Minus
   
     imaginaryPart realN si = do
-      u <- optional (ureal r)
+      u <- optional (ureal r si)
       _ <- char 'i'
       case u of
-        Nothing -> return $ ComplexAbsolute realN (SReal si (UInt $ UInteger 1 0))
-        Just n2 -> return $ ComplexAbsolute realN (SReal si n2)
+        Nothing -> return $ CAbsolute realN (SInteger si (UInteger 1))
+        Just n2 -> return $ CAbsolute realN n2
 
 real :: (MonadParsec e s m, Token s ~ Char) => Radix -> m SReal
 real r = do
   s <- option Plus sign
-  u <- ureal r
-  return $ SReal s u
+  ureal r s
 
-ureal :: forall e s m . (MonadParsec e s m, Token s ~ Char) => Radix -> m UReal
-ureal r =
+ureal :: forall e s m . (MonadParsec e s m, Token s ~ Char) => Radix -> Sign -> m SReal
+ureal r s =
   case r of
     R10 -> dotN <|> (do
       u1 <- uinteger r
@@ -337,10 +333,10 @@ ureal r =
       case mc of
         -- Integer, with or without suffix
         Nothing -> do
-          s <- optional suffix
-          case s of
-            Just _ -> return $ UDecimal u1 (Left $ UInteger 0 0) s
-            Nothing -> return $ UInt u1
+          sf <- optional suffix
+          case sf of
+            Just _ -> return $ SDecimal s u1 (UInteger 0) sf
+            Nothing -> return $ SInteger s u1
 
         -- Rational
         Just '/' -> rational u1
@@ -349,14 +345,21 @@ ureal r =
         Just _ ->
           if hasPounds u1
           then do
+            -- The number before the dot has #, so only # are allowed
             pounds <- takeWhileP Nothing (== '#')
-            s <- optional suffix
-            return $ UDecimal u1 (Right $ toInteger $ chunkLength (Proxy :: Proxy s) pounds) s
+            sf <- optional suffix
+            return $ SDecimal s u1 (UPounds $ toInteger $ chunkLength (Proxy :: Proxy s) pounds) sf
           else do
-            n <- option 0 (udigit R10)
+            -- The number before the dot does not have #, so both digit, # are allowed
+            n <- optional (udigit R10)
             pounds <- takeWhileP Nothing (== '#')
-            s <- optional suffix
-            return $ UDecimal u1 (Left $ UInteger n (toInteger $ chunkLength (Proxy :: Proxy s) pounds)) s 
+            sf <- optional suffix
+            let nbPounds = toInteger $ chunkLength (Proxy :: Proxy s) pounds
+            if nbPounds <= 0
+            then return $ SDecimal s u1 (UInteger (fromMaybe 0 n)) sf
+            else case n of
+                   Nothing -> return $ SDecimal s u1 (UPounds nbPounds) sf
+                   Just u2 -> return $ SDecimal s u1 (UIntPounds u2 nbPounds) sf
                     )
 
     _ -> intOrRationalOnly
@@ -366,25 +369,27 @@ ureal r =
           u1 <- uinteger r
           mc <- optional (char '/')
           case mc of
-            Nothing -> return $ UInt u1
+            Nothing -> return $ SInteger s u1
             Just _ -> rational u1
         
         rational u1 = do
           u2 <- uinteger r
-          return $ URational u1 u2
+          return $ SRational s u1 u2
 
         dotN = do
           _ <- char '.'
-          n <- udigit R10
-          pounds <- takeWhileP Nothing (== '#')
-          s <- optional suffix
-          return $ UDecimal (UInteger 0 0) (Left $ UInteger n (toInteger $ chunkLength (Proxy :: Proxy s) pounds)) s
+          n <- uinteger R10
+          sf <- optional suffix
+          return $ SDecimal s (UInteger 0) n sf
 
 uinteger :: forall e s m . (MonadParsec e s m, Token s ~ Char) => Radix -> m UInteger
 uinteger r = do
   n <- udigit r
   pounds <- takeWhileP Nothing (== '#')
-  return $ UInteger n (toInteger $ chunkLength (Proxy :: Proxy s) pounds)
+  let nbPounds = toInteger $ chunkLength (Proxy :: Proxy s) pounds
+  if nbPounds <= 0
+  then return $ UInteger n
+  else return $ UIntPounds n nbPounds
   
 
 prefix :: (MonadParsec e s m, Token s ~ Char) => m (Maybe Radix, Maybe Exactness)
