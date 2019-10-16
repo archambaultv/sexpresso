@@ -225,6 +225,8 @@ r5rsTestTree = testGroup "Language/R5RS.hs" $ [
                       CReal (SDecimal Plus (UInteger 0) (UPounds 3) Nothing)),
       let s = "-.569" in testCase (show s) $ tparse R5.number s @?= (Right $ SchemeNumber Inexact $
                       CReal (SDecimal Minus (UInteger 0) (UInteger 569) Nothing)),
+      let s = "-245#." in testCase (show s) $ tparse R5.number s @?= (Right $ SchemeNumber Inexact $
+                      CReal (SDecimal Minus (UIntPounds 245 1) (UPounds 0) Nothing)),
       let s = "#e-.569" in testCase (show s) $ tparse R5.number s @?= (Right $ SchemeNumber Exact $
                       CReal (SDecimal Minus (UInteger 0) (UInteger 569) Nothing)),
       let s = "1e10" in testCase (show s) $ tparse R5.number s @?= (Right $ SchemeNumber Inexact $

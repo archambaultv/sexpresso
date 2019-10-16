@@ -339,62 +339,57 @@ real r = do
   ureal r s
 
 ureal :: forall e s m . (MonadParsec e s m, Token s ~ Char) => Radix -> Sign -> m SReal
-ureal r s =
-  case r of
-    R10 -> dotN <|> (do
-      u1 <- uinteger r
-      mc <- optional (char '/' <|> char '.')
-      case mc of
-        -- Integer, with or without suffix
-        Nothing -> do
-          sf <- optional suffix
-          case sf of
-            Just _ -> return $ SDecimal s u1 (UInteger 0) sf
-            Nothing -> return $ SInteger s u1
+ureal r s = dotN <|> ureal'
 
-        -- Rational
-        Just '/' -> rational u1
-
-        -- Decimal
-        Just _ ->
-          if hasPounds u1
-          then do
-            -- The number before the dot has #, so only # are allowed
-            pounds <- takeWhileP Nothing (== '#')
-            sf <- optional suffix
-            return $ SDecimal s u1 (UPounds $ toInteger $ chunkLength (Proxy :: Proxy s) pounds) sf
+  where dotN =  do
+          _ <- char '.'
+          if r /= R10
+          then fail "Numbers containing decimal point must be in decimal radix"
           else do
-            -- The number before the dot does not have #, so both digit, # are allowed
-            n <- optional (udigit R10)
-            pounds <- takeWhileP Nothing (== '#')
-            sf <- optional suffix
-            let nbPounds = toInteger $ chunkLength (Proxy :: Proxy s) pounds
-            if nbPounds <= 0
-            then return $ SDecimal s u1 (UInteger (fromMaybe 0 n)) sf
-            else case n of
-                   Nothing -> return $ SDecimal s u1 (UPounds nbPounds) sf
-                   Just u2 -> return $ SDecimal s u1 (UIntPounds u2 nbPounds) sf
-                    )
+             n <- uinteger R10
+             sf <- optional suffix
+             return $ SDecimal s (UInteger 0) n sf
 
-    _ -> intOrRationalOnly
-
-  where        
-        intOrRationalOnly = do
+        ureal' = do
+          -- First parse an integer
           u1 <- uinteger r
-          mc <- optional (char '/')
+          -- Check if the integer is followed by these characters
+          mc <- optional (char '/' <|> char '.')
           case mc of
-            Nothing -> return $ SInteger s u1
-            Just _ -> rational u1
+            -- Integer with or without suffix
+            Nothing -> plainInteger u1
+            -- Rational
+            Just '/' -> rational u1
+            -- Decimal
+            Just _ -> decimal u1
+
+        plainInteger u1 = do
+            sf <- optional suffix
+            case sf of
+              Just _ -> return $ SDecimal s u1 (UInteger 0) sf
+              Nothing -> return $ SInteger s u1
         
         rational u1 = do
           u2 <- uinteger r
           return $ SRational s u1 u2
 
-        dotN = do
-          _ <- char '.'
-          n <- uinteger R10
-          sf <- optional suffix
-          return $ SDecimal s (UInteger 0) n sf
+        decimal u1 = do
+          if r /= R10
+          then fail "Numbers containing decimal point must be in decimal radix"
+          else do
+             -- If u1 has # character, only other # are
+             -- allowed. Otherwise a number may be present
+             n <- if hasPounds u1 then return Nothing else optional (udigit R10) :: m (Maybe Integer)
+             pounds <- takeWhileP Nothing (== '#')
+             sf <- optional suffix
+             let nbPounds = toInteger $ chunkLength (Proxy :: Proxy s) pounds
+             let u2 = case (hasPounds u1, nbPounds, n) of
+                         (True, p, _) -> UPounds p
+                         (False, 0, Nothing) -> UInteger 0
+                         (False, 0, (Just x)) -> UInteger x
+                         (False, p, Nothing) -> UPounds p
+                         (False, p, (Just x)) -> UIntPounds x p
+             return $ SDecimal s u1 u2 sf
 
 uinteger :: forall e s m . (MonadParsec e s m, Token s ~ Char) => Radix -> m UInteger
 uinteger r = do
