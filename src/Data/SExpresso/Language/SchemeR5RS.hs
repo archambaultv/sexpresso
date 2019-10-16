@@ -268,14 +268,22 @@ data Complex = ComplexReal SReal
              | ComplexAbsolute SReal SReal
              deriving (Eq, Show)
 
-data SchemeNumber = SchemeNumber (Maybe Radix) (Maybe Exactness) Complex
+-- From R5RS 6.4.2 A numerical constant may be specified to be either
+-- exact orinexact by a prefix.  The prefixes are#efor exact, and#ifor
+-- inexact.  An exactness prefix may appear before or afterany radix
+-- prefix that is used.  If the written representationof a number has
+-- no exactness prefix, the constant may beeither inexact or exact.
+-- It is inexact if it contains a decimalpoint, an exponent, or a “#”
+-- character in the place of adigit, otherwise it is exact.
+
+data SchemeNumber = SchemeNumber (Maybe Exactness) Complex
                   deriving (Eq, Show)
 
 number :: (MonadParsec e s m, Token s ~ Char) => m SchemeNumber
 number = do
   (r, e) <- prefix
   c <- complex (fromMaybe R10 r)
-  return $ SchemeNumber r e c
+  return $ SchemeNumber e c
  
 complex :: forall e s m . (MonadParsec e s m, Token s ~ Char) => Radix -> m Complex
 complex r = do
