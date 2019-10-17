@@ -23,7 +23,7 @@ pIdent = some asciiLetter
 pDigit :: Parser String
 pDigit = some digitChar
 
-sexpParser :: SExprParser Parser () () String
+sexpParser :: SExprParser Parser () String
 sexpParser = plainSExprParser (pIdent <|> pDigit)
 
 pSExpr :: Parser (Sexp String)

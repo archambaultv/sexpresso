@@ -33,7 +33,7 @@ pDigit = do
     Nothing -> return n
     Just _ -> return (-1 * n)
 
-sexpParser :: SExprParser Parser () () Integer
+sexpParser :: SExprParser Parser () Integer
 sexpParser = plainSExprParser pDigit
 
 printTestTree :: TestTree

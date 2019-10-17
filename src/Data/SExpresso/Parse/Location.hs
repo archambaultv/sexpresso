@@ -9,8 +9,6 @@
 -- The module "Data.SExpresso.Parse" re-exports the functions and
 -- datatypes of this module.
 
-{-# LANGUAGE OverloadedStrings #-}
-
 module Data.SExpresso.Parse.Location
   (
     Location(..),
@@ -20,6 +18,8 @@ module Data.SExpresso.Parse.Location
   where
 
 import Text.Megaparsec
+
+-- Taken from https://www.reddit.com/r/haskell/comments/4x22f9/labelling_ast_nodes_with_locations/d6cmdy9/
 
 -- | The 'Location' datatype represents a source span 
 data Location = Span SourcePos SourcePos

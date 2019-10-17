@@ -10,8 +10,6 @@
 -- "Data.SExpresso.Parse.Generic", "Data.SExpresso.Parse.Char" and
 -- "Data.SExpresso.Parse.Location".
 
-{-# LANGUAGE OverloadedStrings #-}
-
 module Data.SExpresso.Parse
   (
     module Data.SExpresso.Parse.Generic,

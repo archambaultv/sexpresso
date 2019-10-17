@@ -6,7 +6,7 @@ flexible parser and (for now) a flat printer.
 
 # What is an S-expression
 Basically, an S-expression is a special form of tree structured
-data. It is either an atom or a list of atoms and sub S-expressions.
+data. An S-expression object is either an atom or a list of atoms and other S-expressions.
 
 This datatype is the definition of an S-expression for
 S-expresso. 
@@ -26,20 +26,34 @@ atom `(SList _ [SAtom _])`. `SExpr` is also not equivalent to `Tree a`
 from `Data.Tree` because the later cannot encode the empty tree
 `(SList _ [])` and does not enforce that atoms are at the leaves.
 
-## Pattern synonyms
-S-expresso defines four pattern synonyms to ease your programming with
-`SExpr`. The patterns `L` helps you match the `SList` constructor and
-only its sublist, disregarding the `b` field. The pattern `:::` and
-`Nil` helps you specify the shape of the sublist of an `SList`
-constructor and finally the pattern `A` is a shorthand for SAtom.
+## Pattern synonyms and the Sexp type
+S-expresso defines some pattern synonyms to ease your programming
+with `SExpr`. The pattern `L` helps you match the `SList` constructor
+and only its sublist, disregarding the `b` field. The pattern `A` is a
+shorthand for SAtom.
 
 Together they make working with `SExpr` much easier.
 ~~~
 foo (A x)                   <-> foo (SAtom x)
-foo (A x1 ::: A x2 ::: Nil) <-> foo (SList _ [SAtom x1, SAtom x2])
-foo (A x ::: xs)            <-> foo (SList _ (SAtom x : xs))
-foo (L ys ::: A x ::: xs)   <-> foo (SList _ (SList _ ys : SAtom x : xs))
+foo (L [A x1 : A x2])       <-> foo (SList _ [SAtom x1, SAtom x2])
+foo (L (A x : xs))          <-> foo (SList _ (SAtom x : xs))
+foo (L (L ys : A x : xs))   <-> foo (SList _ (SList _ ys : SAtom x : xs))
 foo (L x)                   <-> foo (SList _ x)
+~~~
+
+If you are only interested by the atoms, you can use the type alias
+`Sexp` that is a variant of the more general 'SExpr' data type with no
+data for the 'SList' constructor.
+~~~haskell
+type Sexp a = SExpr () a
+~~~
+
+This type also comes with a bidirectional pattern synonym also named
+`Sexp` for object of the form `SExpr () _`.
+~~~
+x = Sexp [A 3]              <-> x = SList () [SAtom 3]
+foo (Sexp xs)               <-> foo (SList _ xs)
+foo (Sexp (ys : A x : xs))  <-> foo (SList _ (SList _ ys : SAtom x : xs))
 ~~~
 
 # Parsing S-expressions
@@ -54,10 +68,10 @@ allows you to customize the following :
 
 The library offers amoung others the `decodeOne` and `decode`
 functions. The former only reads one S-expression while the other
-parses a list of S-expressions.  Both functions creates a megaparsec
+parses many S-expressions.  Both functions creates a megaparsec
 parser from a `SExprParser` argument.
 
-The `SExprParser` is the datatype that defines how to read an
+The `SExprParser` is the data type that defines how to read an
 S-expression.  The easiest way to create a `SExprParser` is to use the
 function `plainSExprParser` with your own custom atom parser. This
 will create a parser where S-expression starts with "(", ends with ")"
@@ -131,11 +145,11 @@ optionalSpace = decode $
 ex5 = parse optionalSpace "" "(hello1234world)"
 ~~~
 
-You can also directly build a custom SExprParser with the function `mkSExprParser` or the constructor `SExprParser`.
+You can also directly build a custom SExprParser with the constructor `SExprParser`.
 
 ## Adding Source Location
 If you need the source position of the atoms and s-expression, the
-function `withLocation` transforms an `SExprParser` for `SExpr b a` into a
-parser for `SExpr (Located b) (Located a)`. The `Located` datatype is
+function `withLocation` transforms an `SExprParser b a` into
+`SExprParser (Located b) (Located a)`. The `Located` datatype is
 defined
 [here](https://github.com/archambaultv/sexpresso/blob/master/src/Data/SExpresso/Parse/Location.hs).

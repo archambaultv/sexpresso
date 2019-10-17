@@ -32,6 +32,11 @@
 module Data.SExpresso.Parse.Generic
   (
     SExprParser(..),
+    
+    getAtom,
+    getSpace,
+    getSpacingRule,
+
     setTags,
     setTagsFromList,
     setTagsFromMap,
@@ -68,43 +73,60 @@ data SpacingRule =
   | SOptional
    deriving (Show, Eq)
 
--- | The @'SExprParser' m c b a@ datatype defines how to parse @'SExpr'
--- b a@. Most parsing functions require the underlying monad @m@ to
--- be an instance of ('MonadParsec' e s m). The @c@ parameter is the
--- type of the relation between the opening tag and the clossing one.
-data SExprParser m c b a = SExprParser {
-  -- | The parser for the opening tag 
-  pSTag :: m c,
-  -- | The parser for the closing tag
-  pETag :: c -> m b,
-  -- | The parser for atoms
-  pAtom :: m a,
-  -- | A parser for space tokens which does not accept empty input (e.g. 'Text.Megaparsec.Char.space1')
-  pSpace :: m (),
-  -- | A function to tell if two consecutive atoms must be separated by space or not. See also 'mkSpacingRule' and 'setSpacingRule'.
-  pSpacingRule :: a -> a -> SpacingRule -- t
-  }
+-- | The @'SExprParser' m b a@ datatype defines how to parse an
+-- @'SExpr' b a@. Most parsing functions require the underlying monad
+-- @m@ to be an instance of ('MonadParsec' e s m).
+
+data SExprParser m b a
+  -- | The @c@ parameter in the first two arguments is the type of the
+  -- relation between the opening tag and the closing one.
+  = forall c. SExprParser
+  (m c) -- ^ The parser for the opening tag. Returns an object of an
+        -- arbitrary type @c@ that will be used to create the closing
+        -- tag parser.
+  (c -> m b) -- ^ A function that takes the object returned by the
+             -- opening tag parser and provide a parser for the
+             -- closing tag.
+  (m a) -- ^ The parser for atoms
+  (m ()) -- ^ A parser for space tokens which does not accept empty
+         -- input (e.g. 'Text.Megaparsec.Char.space1')
+  (a -> a -> SpacingRule) -- ^ A function to tell if two consecutive
+                          -- atoms must be separated by space or
+                          -- not. See also 'mkSpacingRule' and
+                          -- 'setSpacingRule'
+
+-- | The 'getSpace' function returns the parser for whitespace of an 'SExprParser' object.
+getSpace :: SExprParser m b a -> m ()
+getSpace (SExprParser _ _ _ sp _) = sp
+
+-- | The 'getSpacingRule' function returns spacing rule function of an 'SExprParser' object.
+getSpacingRule :: SExprParser m b a -> (a -> a -> SpacingRule)
+getSpacingRule (SExprParser _ _ _ _ sr) = sr
+
+-- | The 'getAtom' function returns the parser for atoms of an 'SExprParser' object.
+getAtom :: SExprParser m b a -> m a
+getAtom (SExprParser _ _ a _ _) = a
 
 -- | The 'withLocation' function adds source location to a @'SExprParser'@. See also 'Location'.
-withLocation :: (MonadParsec e s m) => SExprParser m c b a -> SExprParser m (SourcePos, c) (Located b) (Located a)
-withLocation p =
+withLocation :: (MonadParsec e s m) => SExprParser m b a -> SExprParser m (Located b) (Located a)
+withLocation (SExprParser pSTag pETag atom sp sr) =
   let s = do
         pos <- getSourcePos
-        c <- pSTag p
+        c <- pSTag
         return (pos, c)
       e = \(pos, c) -> do
-        b <- pETag p c
+        b <- pETag c
         pos2 <- getSourcePos
         return $ At (Span pos pos2) b
-  in setTags s e $ setAtom (located (pAtom p)) (\(At _ a1) (At _ a2) -> pSpacingRule p a1 a2) p
+  in SExprParser s e (located atom) sp (\(At _ a1) (At _ a2) -> sr a1 a2)
 
 -- | The 'setAtom' function updates a parser with a new parser for atoms and and new spacing rule function.
-setAtom :: m a -> (a -> a -> SpacingRule) -> SExprParser m c b a' -> SExprParser m c b a
-setAtom a sr p = SExprParser (pSTag p) (pETag p) a (pSpace p) sr
+setAtom :: m a -> (a -> a -> SpacingRule) -> SExprParser m b a' -> SExprParser m b a
+setAtom a sr (SExprParser pSTag pETag _ sp _) = SExprParser pSTag pETag a sp sr
 
 -- | The 'setTags' function updates a parser with a new parser for the opening and closing tags.
-setTags :: m c -> (c -> m b) -> SExprParser m c' b' a -> SExprParser m c b a
-setTags s e p = SExprParser s e (pAtom p) (pSpace p) (pSpacingRule p)
+setTags :: m c -> (c -> m b) -> SExprParser m b' a -> SExprParser m b a
+setTags s e (SExprParser _ _ a sp sr) = SExprParser s e a sp sr
 
 -- | The 'setTagsFromList' function helps you build the opening and
 -- closing parsers from a list of triplets. Each triplet specifies a
@@ -132,7 +154,7 @@ setTags s e p = SExprParser s e (pAtom p) (pSpace p) (pSpacingRule p)
 --
 -- > e4 = setTagsFromList [("(", ")", ')'), ("(", "]", ']')] p 
 setTagsFromList ::  (MonadParsec e s m) =>
-                    [(Tokens s, Tokens s, b)] -> SExprParser m c' b' a -> SExprParser m [(Tokens s, b)] b a
+                    [(Tokens s, Tokens s, b)] -> SExprParser m b' a -> SExprParser m b a
 setTagsFromList l p =
   let m = M.fromListWith (++) $ map (\(s,e,b) -> (s, [(e,b)])) l
   in setTagsFromMap m p
@@ -162,7 +184,7 @@ setTagsFromList l p =
 --
 -- > e4 = setTagsFromList $ M.fromList [("(", [(")", ')'), ("]", ']')])] p 
 setTagsFromMap :: (MonadParsec e s m) =>
-                  M.Map (Tokens s) [(Tokens s, b)] -> SExprParser m c' b' a -> SExprParser m [(Tokens s, b)] b a
+                  M.Map (Tokens s) [(Tokens s, b)] -> SExprParser m b' a -> SExprParser m b a
 setTagsFromMap m p =
   let l = M.toList m
 
@@ -174,19 +196,19 @@ setTagsFromMap m p =
       etag = \xs -> choice $ map (\(e, b) -> chunk e >> return b) xs
   in setTags stag etag p
 
--- | The 'spaceIsMandatory' function is a spacing rule where space is always mandatory. See also 'pSpacingRule'.
+-- | The 'spaceIsMandatory' function is a spacing rule where space is always mandatory. See also 'getSpacingRule'.
 spaceIsMandatory :: a -> a -> SpacingRule
 spaceIsMandatory = \_ _ -> SMandatory
 
--- | The 'spaceIsOptional' function is a spacing rule where space is always optional. See also 'pSpacingRule'.
+-- | The 'spaceIsOptional' function is a spacing rule where space is always optional. See also 'getSpacingRule'.
 spaceIsOptional :: a -> a -> SpacingRule
 spaceIsOptional = \_ _ -> SOptional
 
 -- | The 'setSpacingRule' function modifies a 'SExprParser' by setting
 -- the function to tell if two consecutive atoms must be separated by
 -- space or not. See also 'mkSpacingRule'.
-setSpacingRule :: (a -> a -> SpacingRule) -> SExprParser m c b a -> SExprParser m c b a
-setSpacingRule r p = p{pSpacingRule = r}
+setSpacingRule :: (a -> a -> SpacingRule) -> SExprParser m b a -> SExprParser m b a
+setSpacingRule r p@(SExprParser pSTag pETag _ _ _) = SExprParser pSTag pETag (getAtom p) (getSpace p) r
 
 -- | The 'mkSpacingRule' function is a helper to create a valid
 -- spacing rule function for 'SExprParser' when some atoms have the
@@ -216,17 +238,17 @@ mkSpacingRule f = \a1 a2 -> case f a1 of
 -- | The 'setSpace' function modifies a 'SExprParser' by setting the
 -- parser to parse whitespace. The parser for whitespace must not
 -- accept the empty input (e.g. 'Text.Megaparsec.Char.space1')
-setSpace :: m () -> SExprParser m c b a -> SExprParser m c b a
-setSpace c p = p{pSpace = c}
+setSpace :: m () -> SExprParser m b a -> SExprParser m b a
+setSpace sp (SExprParser s e a _ sr) = SExprParser s e a sp sr
 
 -- Tells if the space (or absence of) between two atoms is valid or not 
 spaceIsOK :: (a -> a -> SpacingRule) -> (SExpr b a) -> (SExpr b a) -> Bool -> Bool
-spaceIsOK pSpacingRule' sexp1 sexp2 spaceInBetween =
+spaceIsOK getSpacingRule' sexp1 sexp2 spaceInBetween =
   case (sexp1, sexp2, spaceInBetween) of
     (_, _, True) -> True
     (SList _ _, _, _) -> True
     (_, SList _ _, _) -> True
-    (SAtom a1, SAtom a2, _) -> pSpacingRule' a1 a2 == SOptional
+    (SAtom a1, SAtom a2, _) -> getSpacingRule' a1 a2 == SOptional
 
 sepEndBy' :: (MonadParsec e s m) => m (SExpr b a) -> m () -> (a -> a -> SpacingRule) -> m [SExpr b a]
 sepEndBy' p sep f = sepEndBy1' p sep f <|> pure []
@@ -253,35 +275,35 @@ sepEndBy1' p sep f = do
 
 -- | The 'parseSExprList' function return a parser for parsing S-expression of the form @'SList' _ _@.
 parseSExprList :: (MonadParsec e s m) =>
-                SExprParser m c b a -> m (SExpr b a)
-parseSExprList def = do
-          c <- pSTag def
-          _ <- optional (pSpace def)
-          xs <- sepEndBy' (parseSExpr def) (pSpace def) (pSpacingRule def)
-          b <- pETag def c
+                SExprParser m b a -> m (SExpr b a)
+parseSExprList def@(SExprParser pSTag pETag _ sp sr)  = do
+          c <- pSTag
+          _ <- optional sp
+          xs <- sepEndBy' (parseSExpr def) sp sr
+          b <- pETag c
           return $ SList b xs
 
 -- | The 'parseSExpr' function return a parser for parsing
 -- S-expression ('SExpr'), that is either an atom (@'SAtom' _@) or a
 -- list @'SList' _ _@. See also 'decodeOne' and 'decode'.
 parseSExpr :: (MonadParsec e s m) =>
-              SExprParser m c b a -> m (SExpr b a)
-parseSExpr def = (pAtom def >>= return . SAtom) <|> (parseSExprList def)
+              SExprParser m b a -> m (SExpr b a)
+parseSExpr def = (getAtom def >>= return . SAtom) <|> (parseSExprList def)
 
 -- | The 'decodeOne' function return a parser for parsing a file
 -- containing only one S-expression ('SExpr'). It can parse extra
 -- whitespace at the beginning and at the end of the file. See also
 -- 'parseSExpr' and 'decode'.
-decodeOne :: (MonadParsec e s m) => SExprParser m c b a -> m (SExpr b a)
+decodeOne :: (MonadParsec e s m) => SExprParser m b a -> m (SExpr b a)
 decodeOne def =
-  let ws = pSpace def
+  let ws = getSpace def
   in optional ws *> parseSExpr def <* (optional ws >> eof)
 
 -- | The 'decode' function return a parser for parsing a file
 -- containing many S-expression ('SExpr'). It can parse extra
 -- whitespace at the beginning and at the end of the file. See also
 -- 'parseSExpr' and 'decodeOne'.
-decode :: (MonadParsec e s m) => SExprParser m c b a -> m [SExpr b a]
+decode :: (MonadParsec e s m) => SExprParser m b a -> m [SExpr b a]
 decode def =
-  let ws = pSpace def
-  in optional ws *> sepEndBy' (parseSExpr def) ws (pSpacingRule def) <* eof
+  let ws = getSpace def
+  in optional ws *> sepEndBy' (parseSExpr def) ws (getSpacingRule def) <* eof
