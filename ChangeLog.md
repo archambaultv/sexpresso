@@ -14,8 +14,6 @@ Version 1.0.0.0
 * The `pSTag` and `pETag` functions have been removed since `SExprParser`
   is defined using an existential.
   
-* Remove the `:::` pattern synonym for `SExpr`.
-
 * Documentation improvements.
 
 
