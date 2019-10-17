@@ -32,7 +32,7 @@ import Data.SExpresso.Parse.Generic
 --  * The space parser is 'space1'.
 --  * Space is always mandatory between atoms.
 plainSExprParser :: (MonadParsec e s m, Token s ~ Char) =>
-                    m a -> SExprParser m () () a
+                    m a -> SExprParser m () a
 plainSExprParser p = SExprParser
                      (char '(' >> return ())
                      (\_ -> char ')' >> return ())

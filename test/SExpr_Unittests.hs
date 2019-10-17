@@ -65,30 +65,15 @@ sexpTestTree = testGroup "Sexpr.hs unit tests"
         (case (SList () [SAtom 1 :: Sexp Int]) of
            A 1 -> True
            _ -> False) @?= False,
-      testCase "Nil - empty SList" $
-        (case (SList () []) of
-           Nil -> True
-           _ -> False) @?= True,
-      testCase "Nil - singleton SList" $
-        (case (SList () [SAtom 1 :: Sexp Int]) of
-           Nil -> True
-           _ -> False) @?= False,
-      testCase "::: and Nil (1/4)" $
-        (case (SList () [SAtom 1 :: Sexp Int]) of
-           A 1 ::: Nil -> True
-           _ -> False) @?= True,
-      testCase "::: and Nil (2/4)" $
-        (case (SList () [SAtom 42 :: Sexp Int, SList () [SAtom 0, SList () []]]) of
-           A a' ::: L b' ::: Nil -> 42 == a' && [SAtom 0, SList () []] == b'
-           _ -> False) @?= True,
-      testCase "::: and Nil (3/4)" $
-        (case (SList () [SAtom 1 :: Sexp Int, SAtom 2, SAtom 3, SAtom 4, SAtom 5]) of
-           A 1 ::: A 2 ::: A 3 ::: A 4 ::: A 5 ::: Nil -> True
-           _ -> False) @?= True,
-      testCase "::: and Nil (4/4)" $
-        (case (SList () [SAtom 1 :: Sexp Int, SAtom 2, SAtom 3, SAtom 4, SAtom 5]) of
-           A 1 ::: A 2 ::: A 3 ::: A 4 ::: x -> x == SList () [SAtom 5]
-           _ -> False) @?= True],
+      testCase "Sexp - empty List" $
+        (Sexp [] :: Sexp Int) @?= SList () [],
+      testCase "Sexp - non empty List" $
+        Sexp [A 1 :: Sexp Int, A 2] @?= SList () [SAtom 1, SAtom 2],
+      testCase "Sexp and L" $
+        (case (SList () [SAtom 1 :: Sexp Int, SList () []]) of
+           Sexp [A 1, L []] -> True
+           _ -> False) @?= True
+      ],
 
     testGroup "Functor" [
       testCase "Empty SList" $ fmap (\x -> x + 1) (SList () [] :: Sexp Int) @?= (SList () []),

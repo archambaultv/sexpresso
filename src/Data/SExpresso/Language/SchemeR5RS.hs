@@ -162,7 +162,7 @@ data SExprType =
 -- * 'TQuasiquote'
 -- * 'TComma'
 -- * 'TCommaAt'
-sexpr :: forall e s m . (MonadParsec e s m, Token s ~ Char) => SExprParser m SExprType SExprType SchemeToken
+sexpr :: forall e s m . (MonadParsec e s m, Token s ~ Char) => SExprParser m SExprType SchemeToken
 sexpr =
   let sTag = (single '(' >> return STList) <|> (chunk (tokensToChunk (Proxy :: Proxy s) "#(") >> return STVector)
       eTag = \t -> single ')' >> return t
@@ -424,7 +424,7 @@ isInexact (CReal s) = isInexactR s
 isInexact (CAngle s1 s2) = isInexactR s1 || isInexactR s2
 isInexact (CAbsolute s1 s2) = isInexactR s1 || isInexactR s2
 
--- | A Scheme 'R5RS' is an exact or inexact complex number.
+-- | A Scheme R5RS number is an exact or inexact complex number.
 data SchemeNumber = SchemeNumber Exactness Complex
                   deriving (Eq, Show)
 
