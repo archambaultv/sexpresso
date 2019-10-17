@@ -26,22 +26,7 @@ atom `(SList _ [SAtom _])`. `SExpr` is also not equivalent to `Tree a`
 from `Data.Tree` because the later cannot encode the empty tree
 `(SList _ [])` and does not enforce that atoms are at the leaves.
 
-## Pattern synonyms and the Sexp type
-S-expresso defines some pattern synonyms to ease your programming
-with `SExpr`. The pattern `L` helps you match the `SList` constructor
-and only its sublist, disregarding the `b` field. The pattern `A` is a
-shorthand for SAtom.
-
-Together they make working with `SExpr` a little easier.
-~~~
-a = A 3                     <-> a = SAtom 3
-foo (A x)                   <-> foo (SAtom x)
-foo (L [A x1 : A x2])       <-> foo (SList _ [SAtom x1, SAtom x2])
-foo (L (A x : xs))          <-> foo (SList _ (SAtom x : xs))
-foo (L (L ys : A x : xs))   <-> foo (SList _ (SList _ ys : SAtom x : xs))
-foo (L x)                   <-> foo (SList _ x)
-~~~
-
+## The Sexp type
 If you are only interested by the atoms, you can use the type alias
 `Sexp` that is a variant of the more general 'SExpr' data type with no
 data for the 'SList' constructor.
@@ -53,9 +38,42 @@ This type also comes with a bidirectional pattern synonym also named
 `Sexp` for object of the form `SExpr () _`.
 ~~~
 x = Sexp [A 3]                   <-> x = SList () [SAtom 3]
-foo (Sexp xs)                    <-> foo (SList _ xs)
-foo (Sexp (Sexp ys : A x : xs))  <-> foo (SList _ (SList _ ys : SAtom x : xs))
+foo (Sexp xs)                    <-> foo (SList () xs)
+foo (Sexp (Sexp ys : A x : xs))  <-> foo (SList () (SList () ys : SAtom x : xs))
 ~~~
+
+## Pattern synonyms
+S-expresso defines four pattern synonyms to ease your programming with
+`SExpr`. The patterns `L` helps you match the `SList` constructor and only
+its sublist, disregarding the `b` field. The pattern `:::` and `Nil` helps
+you specify the shape of the sublist of an `SList` constructor and
+finally the pattern `A` is a shorthand for `SAtom`.
+
+Together they make working with `SExpr` a little easier.
+~~~
+a = A 3                      <-> a = SAtom 3
+foo (A x)                    <-> foo (SAtom x)
+foo (A x1 ::: A x2 ::: Nil)  <-> foo (SList _ [SAtom x1, SAtom x2])
+foo (A x ::: L xs))          <-> foo (SList _ (SAtom x : xs))
+foo (L ys ::: A x ::: L xs)) <-> foo (SList _ (SList _ ys : SAtom x : xs))
+foo (L x)                    <-> foo (SList _ x)
+~~~
+
+Notice that you need to end the pattern `:::` with `Nil` for the empty
+list or `L xs` for matching the remainder of the list. Indeed, if you write
+
+~~~
+foo (x ::: xs) = ...
+~~~
+
+this is equivalent to :
+
+~~~
+foo (SList b (x : rest)) = let xs = SList b rest
+                           in ...
+~~~
+
+You can refer to the documentation of the `:::` constructor for more information.
 
 # Parsing S-expressions
 The parsing is based on

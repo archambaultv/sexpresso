@@ -72,7 +72,23 @@ sexpTestTree = testGroup "Sexpr.hs unit tests"
       testCase "Sexp and L" $
         (case (SList () [SAtom 1 :: Sexp Int, SList () []]) of
            Sexp [A 1, L []] -> True
-           _ -> False) @?= True
+           _ -> False) @?= True,
+      testCase "::: (1/2)" $
+        (case (SList () [SAtom 1 :: Sexp Int, SAtom 2]) of
+           (A 1 ::: A 2 ::: L []) -> True
+           _ -> False) @?= True,
+      testCase "::: (2/2)" $
+        (case (SList () [SAtom 1 :: Sexp Int, SAtom 2, SAtom 3]) of
+           (A 1 ::: L xs) -> xs == [SAtom 2, SAtom 3]
+           _ -> False) @?= True,
+      testCase "Nil (1/2)" $
+        (case (SList () [SAtom 1 :: Sexp Int, SAtom 2]) of
+           (A 1 ::: A 2 ::: Nil) -> True
+           _ -> False) @?= True,
+      testCase "Nil (2/2)" $
+        (case (SList () [SAtom 1 :: Sexp Int, SAtom 2, SAtom 3]) of
+           (A 1 ::: A 2 ::: Nil) -> True
+           _ -> False) @?= False
       ],
 
     testGroup "Functor" [
