@@ -16,6 +16,10 @@ Version 1.0.0.0
   
 * Documentation improvements.
 
+Version 0.1.1.1
+---------------
+
+* Fix documentation error for the pattern :::
 
 Version 0.1.1.0
 ---------------
