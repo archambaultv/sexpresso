@@ -32,8 +32,9 @@ with `SExpr`. The pattern `L` helps you match the `SList` constructor
 and only its sublist, disregarding the `b` field. The pattern `A` is a
 shorthand for SAtom.
 
-Together they make working with `SExpr` much easier.
+Together they make working with `SExpr` a little easier.
 ~~~
+a = A 3                     <-> a = SAtom 3
 foo (A x)                   <-> foo (SAtom x)
 foo (L [A x1 : A x2])       <-> foo (SList _ [SAtom x1, SAtom x2])
 foo (L (A x : xs))          <-> foo (SList _ (SAtom x : xs))
@@ -51,9 +52,9 @@ type Sexp a = SExpr () a
 This type also comes with a bidirectional pattern synonym also named
 `Sexp` for object of the form `SExpr () _`.
 ~~~
-x = Sexp [A 3]              <-> x = SList () [SAtom 3]
-foo (Sexp xs)               <-> foo (SList _ xs)
-foo (Sexp (ys : A x : xs))  <-> foo (SList _ (SList _ ys : SAtom x : xs))
+x = Sexp [A 3]                   <-> x = SList () [SAtom 3]
+foo (Sexp xs)                    <-> foo (SList _ xs)
+foo (Sexp (Sexp ys : A x : xs))  <-> foo (SList _ (SList _ ys : SAtom x : xs))
 ~~~
 
 # Parsing S-expressions
