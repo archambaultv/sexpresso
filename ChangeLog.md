@@ -1,5 +1,10 @@
 # Changelog for S-expresso
 
+Version 1.0.0.1
+---------------
+
+* Add version bounds to the dependencies
+
 Version 1.0.0.0
 ---------------
 
