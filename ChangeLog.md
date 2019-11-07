@@ -1,5 +1,11 @@
 # Changelog for S-expresso
 
+Version 1.0.0.2
+---------------
+
+* Update Resolver
+* Update synopsis
+
 Version 1.0.0.1
 ---------------
 
