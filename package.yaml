@@ -1,7 +1,7 @@
 name:                sexpresso
 version:             1.0.0.2
 github:              "archambaultv/sexpresso"
-license:             0BSD
+license:             OtherLicense # 0BSD
 author:              "Vincent Archambault-Bouffard"
 maintainer:          "archambault.v@gmail.com"
 copyright:           "Vincent Archambault-Bouffard"
