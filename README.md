@@ -1,3 +1,5 @@
+[![Hackage](https://img.shields.io/hackage/v/sexpresso.svg)](http://hackage.haskell.org/package/sexpresso)
+
 # S-expresso
 
 S-expresso is a Haskell library designed to help you parse and print
