@@ -192,32 +192,32 @@ data Datum = DBoolean Bool
 -- token.
 sexpr2Datum :: [SExpr SExprType SchemeToken] -> Either String [Datum]
 sexpr2Datum [] = Right []
-sexpr2Datum ((A (TBoolean x)) : xs) = (:) <$> pure (DBoolean x) <*> sexpr2Datum xs
-sexpr2Datum ((A (TNumber x)) : xs) = (:) <$> pure (DNumber x) <*> sexpr2Datum xs
-sexpr2Datum ((A (TChar x)) : xs) = (:) <$> pure (DChar x) <*> sexpr2Datum xs
-sexpr2Datum ((A (TString x)) : xs) = (:) <$> pure (DString x) <*> sexpr2Datum xs
-sexpr2Datum ((A (TIdentifier x)) : xs) = (:) <$> pure (DIdentifier x) <*> sexpr2Datum xs
-sexpr2Datum ((A TQuote) : xs) = do
+sexpr2Datum ((SAtom (TBoolean x)) : xs) = (:) <$> pure (DBoolean x) <*> sexpr2Datum xs
+sexpr2Datum ((SAtom (TNumber x)) : xs) = (:) <$> pure (DNumber x) <*> sexpr2Datum xs
+sexpr2Datum ((SAtom (TChar x)) : xs) = (:) <$> pure (DChar x) <*> sexpr2Datum xs
+sexpr2Datum ((SAtom (TString x)) : xs) = (:) <$> pure (DString x) <*> sexpr2Datum xs
+sexpr2Datum ((SAtom (TIdentifier x)) : xs) = (:) <$> pure (DIdentifier x) <*> sexpr2Datum xs
+sexpr2Datum ((SAtom TQuote) : xs) = do
   xs' <- sexpr2Datum xs
   if null xs'
   then Left "Expecting a datum after the quote."
   else return $ DQuote (head xs') : tail xs'
-sexpr2Datum ((A TQuasiquote) : xs) = do
+sexpr2Datum ((SAtom TQuasiquote) : xs) = do
   xs' <- sexpr2Datum xs
   if null xs'
   then Left "Expecting a datum after the quasiquote."
   else return $ DQuasiquote (head xs') : tail xs'
-sexpr2Datum ((A TComma) : xs) = do
+sexpr2Datum ((SAtom TComma) : xs) = do
   xs' <- sexpr2Datum xs
   if null xs'
   then Left "Expecting a datum after the comma."
   else return $ DComma (head xs') : tail xs'
-sexpr2Datum ((A TCommaAt) : xs) = do
+sexpr2Datum ((SAtom TCommaAt) : xs) = do
   xs' <- sexpr2Datum xs
   if null xs'
   then Left "Expecting a datum after the quote."
   else return $ DCommaAt (head xs') : tail xs'
-sexpr2Datum ((A TDot) : _) = Left "Unexpected dot"
+sexpr2Datum ((SAtom TDot) : _) = Left "Unexpected dot"
 sexpr2Datum ((SList STVector vs) : xs) = (:) <$> (sexpr2Datum vs >>= return . DVector) <*> sexpr2Datum xs
 sexpr2Datum ((SList STList ls) : xs) = (:) <$> (listToken2Datum ls) <*> sexpr2Datum xs
   where listToken2Datum ys =
