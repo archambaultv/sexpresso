@@ -2,3 +2,4 @@
 sexpresso.cabal
 *~
 .#*
+*.lock
