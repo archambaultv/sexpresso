@@ -13,7 +13,9 @@ module Data.SExpresso.Parse.Location
   (
     Location(..),
     Located(..),
-    located
+    located,
+    startPosPretty,
+    endPosPretty
    )
   where
 
@@ -24,6 +26,14 @@ import Text.Megaparsec
 -- | The 'Location' datatype represents a source span 
 data Location = Span SourcePos SourcePos
               deriving (Eq, Ord, Show)
+
+-- | Pretty prints @S1@ of a @'Span' S1 _@ object with 'sourcePosPretty'
+startPosPretty :: Location -> String
+startPosPretty (Span s _) = sourcePosPretty s
+
+-- | Pretty prints @S2@ of a @'Span' _ S2@ object with 'sourcePosPretty'
+endPosPretty :: Location -> String
+endPosPretty (Span _ s) = sourcePosPretty s
 
 -- | The 'Located' datatype adds a source span to the type @a@
 data Located a = At Location a

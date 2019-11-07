@@ -1,5 +1,10 @@
 # Changelog for S-expresso
 
+Version 1.0.1.0
+---------------
+
+* Add startPosPretty and endPosPretty function
+
 Version 1.0.0.2
 ---------------
 
