@@ -10,6 +10,9 @@
 
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE ViewPatterns #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE DeriveFunctor, DeriveFoldable, DeriveTraversable #-}
 
 
@@ -29,6 +32,9 @@ module Data.SExpresso.SExpr
   )
   where
 
+import Data.Bifunctor.TH
+import Data.Functor.Foldable.TH
+
 -- | The datatype 'SExpr' is the definition of an S-expression for the
 -- library S-expresso.
 --
@@ -38,6 +44,11 @@ module Data.SExpresso.SExpr
 data SExpr b a = SList b [SExpr b a]
                | SAtom a
                deriving (Eq, Show, Functor, Traversable, Foldable)
+
+$(deriveBifunctor ''SExpr)
+$(deriveBifoldable ''SExpr)
+$(deriveBitraversable ''SExpr)
+$(makeBaseFunctor ''SExpr)
 
 -- | The type synonym 'Sexp' is a variant of the more general 'SExpr'
 -- datatype with no data for the 'SList' constructor.

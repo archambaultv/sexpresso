@@ -4,6 +4,8 @@ Version 1.1.0.0
 ---------------
 
 * Add startPosPretty and endPosPretty function
+* Add Bifunctor, Bifoldable and Bitraversable instances
+* Add Base SExpr, Recursive, Corecursive instances (see package recursion-schemes)
 
 Version 1.0.0.2
 ---------------
