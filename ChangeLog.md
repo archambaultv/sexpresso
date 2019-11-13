@@ -7,6 +7,7 @@ Version 1.1.0.0
 * Add Bifunctor, Bifoldable and Bitraversable instances for SExpr
 * Add Base SExpr, Recursive, Corecursive instances (see package recursion-schemes)
 * Add Functor instance for Located
+* Fix SExprPrinter constructor name (SExprParser -> SExprPrinter)
 
 Version 1.0.0.2
 ---------------
