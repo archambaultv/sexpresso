@@ -81,6 +81,7 @@ import qualified Data.Char as C
 import qualified Data.Text as T
 import qualified Data.Text.Lazy as L
 import qualified Data.Text.Lazy.Builder as B
+import Data.Foldable
 import Text.Megaparsec
 import Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as ML
@@ -191,50 +192,36 @@ data Datum = DBoolean Bool
 -- 'TComma', 'TCommaAt' and 'TDot' tokens must be followed by another
 -- token.
 sexpr2Datum :: [SExpr SExprType SchemeToken] -> Either String [Datum]
-sexpr2Datum [] = Right []
-sexpr2Datum ((SAtom (TBoolean x)) : xs) = (:) <$> pure (DBoolean x) <*> sexpr2Datum xs
-sexpr2Datum ((SAtom (TNumber x)) : xs) = (:) <$> pure (DNumber x) <*> sexpr2Datum xs
-sexpr2Datum ((SAtom (TChar x)) : xs) = (:) <$> pure (DChar x) <*> sexpr2Datum xs
-sexpr2Datum ((SAtom (TString x)) : xs) = (:) <$> pure (DString x) <*> sexpr2Datum xs
-sexpr2Datum ((SAtom (TIdentifier x)) : xs) = (:) <$> pure (DIdentifier x) <*> sexpr2Datum xs
-sexpr2Datum ((SAtom TQuote) : xs) = do
-  xs' <- sexpr2Datum xs
-  if null xs'
-  then Left "Expecting a datum after the quote."
-  else return $ DQuote (head xs') : tail xs'
-sexpr2Datum ((SAtom TQuasiquote) : xs) = do
-  xs' <- sexpr2Datum xs
-  if null xs'
-  then Left "Expecting a datum after the quasiquote."
-  else return $ DQuasiquote (head xs') : tail xs'
-sexpr2Datum ((SAtom TComma) : xs) = do
-  xs' <- sexpr2Datum xs
-  if null xs'
-  then Left "Expecting a datum after the comma."
-  else return $ DComma (head xs') : tail xs'
-sexpr2Datum ((SAtom TCommaAt) : xs) = do
-  xs' <- sexpr2Datum xs
-  if null xs'
-  then Left "Expecting a datum after the quote."
-  else return $ DCommaAt (head xs') : tail xs'
-sexpr2Datum ((SAtom TDot) : _) = Left "Unexpected dot"
-sexpr2Datum ((SList STVector vs) : xs) = (:) <$> (sexpr2Datum vs >>= return . DVector) <*> sexpr2Datum xs
-sexpr2Datum ((SList STList ls) : xs) = (:) <$> (listToken2Datum ls) <*> sexpr2Datum xs
-  where listToken2Datum ys =
-          let l = length ys
-          in if l < 3
-             then sexpr2Datum ys >>= return . DList
-             else let penultimate = head $ drop (l - 2) ys
-                  in case penultimate of
-                       (A TDot) ->
-                         let last' = head $ drop (l - 1) ys
-                             tokens' = take (l - 2) ys
-                         in do
-                           lastD <- sexpr2Datum [last']
-                           tokensD <- sexpr2Datum tokens'
-                           return $ DDotList tokensD (head lastD) 
-                       _ -> sexpr2Datum ys >>= return . DList
+sexpr2Datum = foldrM vectorFold []
+  where vectorFold :: SExpr SExprType SchemeToken -> [Datum] -> Either String [Datum]
+        vectorFold (SAtom TQuote) [] = Left $ "Expecting a datum after a quote"
+        vectorFold (SAtom TQuote) (x : xs) = pure $ DQuote x : xs
+        vectorFold (SAtom TQuasiquote) [] = Left $ "Expecting a datum after a quasiquote"
+        vectorFold (SAtom TQuasiquote) (x : xs) = pure $ DQuasiquote x : xs
+        vectorFold (SAtom TComma) [] = Left $ "Expecting a datum after a comma"
+        vectorFold (SAtom TComma) (x : xs) = pure $ DComma x : xs
+        vectorFold (SAtom TCommaAt) [] = Left $ "Expecting a datum after a commaAt"
+        vectorFold (SAtom TCommaAt) (x : xs) = pure $ DCommaAt x : xs
+        vectorFold (SAtom TDot) _ = Left "Unexpected dot"
+        vectorFold (SList STVector xs) acc = ((:) . DVector) <$> sexpr2Datum xs <*> pure acc
+        vectorFold (SList STList xs) acc =
+          let chooseConstructor (isDotList, ls) = (:) (if isDotList
+                                                       then DDotList (init ls) (last ls)
+                                                       else DList ls)
+          in chooseConstructor <$> (foldrM listFold (False, []) xs) <*> pure acc
+        vectorFold (SAtom x) acc = pure $ simpleToken x : acc
 
+        simpleToken :: SchemeToken -> Datum
+        simpleToken (TBoolean x) = DBoolean x
+        simpleToken (TNumber x) = DNumber x
+        simpleToken (TChar x) = DChar x
+        simpleToken (TString x) = DString x
+        simpleToken (TIdentifier x) = DIdentifier x
+        simpleToken _ = error "simpleToken only handles a subset of SchemeToken constructors"
+
+        listFold :: SExpr SExprType SchemeToken -> (Bool, [Datum]) -> Either String (Bool, [Datum])
+        listFold (SAtom TDot) (_, [x]) = pure (True, [x])
+        listFold x (d, acc) = (,) d <$> vectorFold x acc
 
 ------------------------- Whitespace and comments -------------------------
 -- | The 'whitespace' parser  parses one space, tab or end of line (\\n and \\r\\n).

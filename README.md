@@ -1,3 +1,4 @@
+[![License OBSD](https://img.shields.io/badge/license-0BSD-brightgreen.svg)](https://opensource.org/licenses/0BSD)
 [![Hackage](https://img.shields.io/hackage/v/sexpresso.svg)](http://hackage.haskell.org/package/sexpresso)
 
 # S-expresso

@@ -1,5 +1,13 @@
 # Changelog for S-expresso
 
+Version 1.1.0.0
+---------------
+
+* Add startPosPretty and endPosPretty function
+* Add Bifunctor, Bifoldable and Bitraversable instances for SExpr
+* Add Base SExpr, Recursive, Corecursive instances (see package recursion-schemes)
+* Add Functor instance for Located
+
 Version 1.0.0.2
 ---------------
 
