@@ -1,5 +1,5 @@
 -- |
--- Module      :  Data.SExpresso.SExpr
+-- Module      :  Data.SExpresso.Language.SchemeR5RS
 -- Copyright   :  © 2019 Vincent Archambault
 -- License     :  0BSD
 --
