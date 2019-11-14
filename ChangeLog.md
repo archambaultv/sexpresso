@@ -8,48 +8,14 @@ Version 1.1.0.0
 * Add Base SExpr, Recursive, Corecursive instances (see package recursion-schemes)
 * Add Functor instance for Located
 * Fix SExprPrinter constructor name (SExprParser -> SExprPrinter)
+* Improve documentation
 
 Version 1.0.0.2
 ---------------
 
-* Update Resolver
-* Update synopsis
-
-Version 1.0.0.1
----------------
-
-* Add version bounds to the dependencies
-
-Version 1.0.0.0
----------------
-
-* Change type of SExprParser from `SExpParser m c b a` to `SExprParser m
-  b a`. The `c` parameter is now an existential. 
-
-* `SExprParser` is not a record anymore. So `pAtom`, `pSpace` and
-  `pSpacingRule` are now functions and cannot be used in record
-  syntax. The have been rename to `getAtom`, `getSpace` and
-  `getSpacingRule`.
-
-* The `pSTag` and `pETag` functions have been removed since `SExprParser`
-  is defined using an existential.
-  
-* Documentation improvements.
-
-Version 0.1.1.1
----------------
-
-* Fix documentation error for the pattern :::
-
-Version 0.1.1.0
----------------
-
-* Add Scheme R5RS language
-
-Version 0.1.0.0
---------------- 
-
-* SExpr datatype
+* Initial Hackage Release
+* SExpr datatype for representing S-expression
 * Generic SExpr parser
-* SExpr parser for character
+* Specialized SExpr parser for character
 * SExpr flat printer
+* Scheme R5RS parser implementation
