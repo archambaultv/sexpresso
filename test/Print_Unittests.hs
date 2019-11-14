@@ -12,18 +12,17 @@ import Test.Tasty.SmallCheck as SC
 import Test.SmallCheck.Series
 import Text.Megaparsec
 import Text.Megaparsec.Char
-import qualified Data.Text as T
 import Data.SExpresso.SExpr
 import Data.SExpresso.Print
 import Data.SExpresso.Parse
 
-type Parser = Parsec Void T.Text
+type Parser = Parsec Void String
 
-instance (Serial m b, Serial m a) => Serial m (SExpr b a) where
-  series = cons1 SAtom \/ cons2 SList
+instance (Serial m a) => Serial m (SExpr a) where
+  series = cons1 SAtom \/ cons1 SList
 
-printer :: SExprPrinter () Integer
-printer = mkPrinter (T.pack . show)
+printer :: SExprPrinter String (SExpr Integer)
+printer = simplePrinter (sexprTranslator "(" ")" show) " "
 
 pDigit :: Parser Integer
 pDigit = do
@@ -33,19 +32,19 @@ pDigit = do
     Nothing -> return n
     Just _ -> return (-1 * n)
 
-sexpParser :: SExprParser Parser () Integer
-sexpParser = plainSExprParser pDigit
+sexpParser :: SListDefinition Parser Integer
+sexpParser = plainSListDefinition pDigit
 
 printTestTree :: TestTree
 printTestTree = testGroup "Print.hs unit tests" $
   [testGroup "flatPrint" [
-      testCase "Empty SList" $ flatPrint printer (SList () [] :: Sexp Integer) @?= "()",
-      testCase "Singleton SList" $ flatPrint printer (SList () [SAtom 1] :: Sexp Integer) @?= "(1)",
-      testCase "SList 1/3" $ flatPrint printer (SList () [SAtom 1, SAtom 2, SAtom 3] :: Sexp Integer) @?= "(1 2 3)",
-      testCase "SList 2/3" $ flatPrint printer (SList () [SAtom 1, SList () [SAtom 2], SAtom 3] :: Sexp Integer) @?= "(1 (2) 3)",
-      testCase "SList 3/3" $ flatPrint printer (SList () [SList () [SAtom 1], SAtom 2, SList () [SAtom 3]] :: Sexp Integer) @?= "((1) 2 (3))",
-      testCase "SAtom" $ flatPrint printer (SAtom 3 :: Sexp Integer) @?= "3",
+      testCase "Empty SList" $ flatPrint printer (SList [] :: SExpr Integer) @?= "()",
+      testCase "Singleton SList" $ flatPrint printer (SList [SAtom 1] :: SExpr Integer) @?= "(1)",
+      testCase "SList 1/3" $ flatPrint printer (SList [SAtom 1, SAtom 2, SAtom 3] :: SExpr Integer) @?= "(1 2 3)",
+      testCase "SList 2/3" $ flatPrint printer (SList [SAtom 1, SList [SAtom 2], SAtom 3] :: SExpr Integer) @?= "(1 (2) 3)",
+      testCase "SList 3/3" $ flatPrint printer (SList [SList [SAtom 1], SAtom 2, SList [SAtom 3]] :: SExpr Integer) @?= "((1) 2 (3))",
+      testCase "SAtom" $ flatPrint printer (SAtom 3 :: SExpr Integer) @?= "3",
       SC.testProperty "decodeOne inverse of flatPrint" $
-      \s -> parse (decodeOne sexpParser) "" (flatPrint printer (s :: Sexp Integer)) == Right s
+      \s -> parse (decodeOne sexpParser) "" (flatPrint printer (s :: SExpr Integer)) == Right s
       ]
   ]

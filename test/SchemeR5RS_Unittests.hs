@@ -11,15 +11,9 @@ import Data.Bifunctor (first)
 import Test.Tasty
 import Test.Tasty.HUnit
 import Text.Megaparsec
---import Text.Megaparsec.Char
-import Data.SExpresso.SExpr
-import Data.SExpresso.Parse
 import Data.SExpresso.Language.SchemeR5RS as R5
 
 type Parser = Parsec Void T.Text
-
-pSExpr :: Parser [SExpr R5.SExprType R5.SchemeToken]
-pSExpr = decode R5.sexpr
 
 -- tparse parses the whole input
 tparse :: Parser a -> T.Text -> Either String a
@@ -294,41 +288,46 @@ r5rsTestTree = testGroup "Language/R5RS.hs" $ [
       let s = "#f" in testCase (show s) $ (isLeft $ tparse R5.number s) @? "Parsing must fail on #f"
       ],
     testGroup "datum" $ [
-      let s = "1" in testCase (show s) $ (tparse pSExpr s >>= sexpr2Datum) @?=
-                     (Right $ [DNumber (SchemeNumber Exact (CReal (SInteger Plus (UInteger 1))))]),
+      let s = "1" in testCase (show s) $ (tparse R5.datum s) @?=
+                     (Right $ DNumber (SchemeNumber Exact (CReal (SInteger Plus (UInteger 1))))),
         
-      let s = "foo" in testCase (show s) $ (tparse pSExpr s >>= sexpr2Datum) @?=
-                     (Right $ [DIdentifier "foo"]),
-      let s = "(foo #\\a)" in testCase (show s) $ (tparse pSExpr s >>= sexpr2Datum) @?=
-                     (Right $ [DList [DIdentifier "foo", DChar 'a']]),
-      let s = "(foo #\\a) \"hello\"" in testCase (show s) $ (tparse pSExpr s >>= sexpr2Datum) @?=
-                     (Right $ [DList [DIdentifier "foo", DChar 'a'], DString "hello"]),
-        
-      let s = "'foo" in testCase (show s) $ (tparse pSExpr s >>= sexpr2Datum) @?=
-                     (Right $ [DQuote (DIdentifier "foo")]),
-      let s = "`foo" in testCase (show s) $ (tparse pSExpr s >>= sexpr2Datum) @?=
-                     (Right $ [DQuasiquote (DIdentifier "foo")]),
-      let s = "`(foo ,a)" in testCase (show s) $ (tparse pSExpr s >>= sexpr2Datum) @?=
-                     (Right $ [DQuasiquote (DList [DIdentifier "foo", DComma (DIdentifier "a")])]),
-      let s = "`(foo , a)" in testCase (show s) $ (tparse pSExpr s >>= sexpr2Datum) @?=
-                     (Right $ [DQuasiquote (DList [DIdentifier "foo", DComma (DIdentifier "a")])]),
-      let s = "`(foo, a)" in testCase (show s) $ (tparse pSExpr s >>= sexpr2Datum) @?=
-                     (Right $ [DQuasiquote (DList [DIdentifier "foo", DComma (DIdentifier "a")])]),
-      let s = "`(foo ,@a)" in testCase (show s) $ (tparse pSExpr s >>= sexpr2Datum) @?=
-                     (Right $ [DQuasiquote (DList [DIdentifier "foo", DCommaAt (DIdentifier "a")])]),
-      let s = "`(foo ,@ a)" in testCase (show s) $ (tparse pSExpr s >>= sexpr2Datum) @?=
-                     (Right $ [DQuasiquote (DList [DIdentifier "foo", DCommaAt (DIdentifier "a")])]),
-      let s = "`(foo,@ a)" in testCase (show s) $ (tparse pSExpr s >>= sexpr2Datum) @?=
-                     (Right $ [DQuasiquote (DList [DIdentifier "foo", DCommaAt (DIdentifier "a")])]),
-      let s = "(foo . a)" in testCase (show s) $ (tparse pSExpr s >>= sexpr2Datum) @?=
-                     (Right $ [DDotList [DIdentifier "foo"] (DIdentifier "a")]),
-      let s = "(foo a b c . d)" in testCase (show s) $ (tparse pSExpr s >>= sexpr2Datum) @?=
-                     (Right $ [DDotList [DIdentifier "foo", DIdentifier "a", DIdentifier "b", DIdentifier "c"] (DIdentifier "d")]),
+      let s = "foo" in testCase (show s) $ (tparse R5.datum s) @?=
+                     (Right $ DIdentifier "foo"),
+      let s = "()" in testCase (show s) $ (tparse R5.datum s) @?=
+                     (Right $ DList []),
+      let s = "#(foo #\\a)" in testCase (show s) $ (tparse R5.datum s) @?=
+                     (Right $ DVector [DIdentifier "foo", DChar 'a']),    
+      let s = "(foo #\\a)" in testCase (show s) $ (tparse R5.datum s) @?=
+                     (Right $ DList [DIdentifier "foo", DChar 'a']),    
+      let s = "'foo" in testCase (show s) $ (tparse R5.datum s) @?=
+                     (Right $ DQuote (DIdentifier "foo")),
+      let s = "`foo" in testCase (show s) $ (tparse R5.datum s) @?=
+                     (Right $ DQuasiquote (DIdentifier "foo")),
+      let s = "`(foo ,a)" in testCase (show s) $ (tparse R5.datum s) @?=
+                     (Right $ DQuasiquote (DList [DIdentifier "foo", DComma (DIdentifier "a")])),
+      let s = "`(foo , a)" in testCase (show s) $ (tparse R5.datum s) @?=
+                     (Right $ DQuasiquote (DList [DIdentifier "foo", DComma (DIdentifier "a")])),
+      let s = "`(foo, a)" in testCase (show s) $ (tparse R5.datum s) @?=
+                     (Right $ DQuasiquote (DList [DIdentifier "foo", DComma (DIdentifier "a")])),
+      let s = "`(foo ,@a)" in testCase (show s) $ (tparse R5.datum s) @?=
+                     (Right $ DQuasiquote (DList [DIdentifier "foo", DCommaAt (DIdentifier "a")])),
+      let s = "`(foo ,@ a)" in testCase (show s) $ (tparse R5.datum s) @?=
+                     (Right $ DQuasiquote (DList [DIdentifier "foo", DCommaAt (DIdentifier "a")])),
+      let s = "`(foo,@ a)" in testCase (show s) $ (tparse R5.datum s) @?=
+                     (Right $ DQuasiquote (DList [DIdentifier "foo", DCommaAt (DIdentifier "a")])),
+      let s = "(foo . a)" in testCase (show s) $ (tparse R5.datum s) @?=
+                     (Right $ DDotList [DIdentifier "foo"] (DIdentifier "a")),
+      let s = "(foo a b c . d)" in testCase (show s) $ (tparse R5.datum s) @?=
+                     (Right $ DDotList [DIdentifier "foo", DIdentifier "a", DIdentifier "b", DIdentifier "c"] (DIdentifier "d")),
       let s = "(foo .)" in testCase (show s) $ (isLeft $ tparse R5.number s) @? "Parsing must fail on (foo .)",
       let s = "(foo ')" in testCase (show s) $ (isLeft $ tparse R5.number s) @? "Parsing must fail on (foo ')",
       let s = "(foo `)" in testCase (show s) $ (isLeft $ tparse R5.number s) @? "Parsing must fail on (foo `)",
       let s = "(foo ,)" in testCase (show s) $ (isLeft $ tparse R5.number s) @? "Parsing must fail on (foo ,)",
       let s = "(foo ,@)" in testCase (show s) $ (isLeft $ tparse R5.number s) @? "Parsing must fail on (foo ,@)",
-      let s = "(foo a b . c d)" in testCase (show s) $ (isLeft $ tparse R5.number s) @? "Parsing must fail on (foo a b . c d)"
+      let s = "(foo a b . c d)" in testCase (show s) $ (isLeft $ tparse R5.number s) @? "Parsing must fail on (foo a b . c d)",
+
+      -- There must be a space between the dot of a dot list
+      let s = "(() .b)" in testCase (show s) $ (isLeft $ tparse R5.number s) @? "Parsing must fail on (() .b)",
+      let s = "((). b)" in testCase (show s) $ (isLeft $ tparse R5.number s) @? "Parsing must fail on ((). b)"
       ]
   ]

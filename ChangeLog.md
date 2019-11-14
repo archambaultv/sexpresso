@@ -1,5 +1,25 @@
 # Changelog for S-expresso
 
+Version 2.0.0.0
+---------------
+This version features a different approach for parsing, printing and for the `SExpr` data
+type. It will break existing code with version 1.x.x.x.
+
+* Remove the `b` parameter in the datatype `SExpr`. For keeping metadata about
+  the `SList` constructor use the recursive scheme approach. See the README
+file for examples
+
+* Rename data type Location to Span
+
+* Remove SchemeToken and related functions. Scheme R5RS directly parses Datum.
+
+* Replace SExprParser with SListDefinition
+* Add sepByRule, sepByRule1, sepEndByRule, sepEndByRule1, sepList functions to help parse custom S-expression
+
+* Change constructor of SExprParser so that it works for any type isomorphic to SExpr
+* The printer now works for any Monoid instead of text
+* Remove Print.Lazy since it now works for all Monoid instances
+
 Version 1.1.0.0
 ---------------
 

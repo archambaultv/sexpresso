@@ -14,7 +14,7 @@
 
 module Data.SExpresso.Parse.Char
   (
-    plainSExprParser
+    plainSListDefinition
    )
   where
 
@@ -31,11 +31,11 @@ import Data.SExpresso.Parse.Generic
 --  * The closing tag is ).
 --  * The space parser is 'space1'.
 --  * Space is always mandatory between atoms.
-plainSExprParser :: (MonadParsec e s m, Token s ~ Char) =>
-                    m a -> SExprParser m () a
-plainSExprParser p = SExprParser
-                     (char '(' >> return ())
-                     (\_ -> char ')' >> return ())
-                     p
-                     space1
-                     spaceIsMandatory
+plainSListDefinition :: (MonadParsec e s m, Token s ~ Char) =>
+                        m a -> SListDefinition m a
+plainSListDefinition p = SListDefinition
+                         (char '(' >> return ())
+                         (char ')' >> return ())
+                         p
+                         space1
+                         sepIsMandatory

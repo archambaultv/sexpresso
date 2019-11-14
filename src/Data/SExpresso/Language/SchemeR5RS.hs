@@ -1,5 +1,5 @@
 -- |
--- Module      :  Data.SExpresso.SExpr
+-- Module      :  Data.SExpresso.Language.SchemeR5RS
 -- Copyright   :  © 2019 Vincent Archambault
 -- License     :  0BSD
 --
@@ -21,14 +21,9 @@
 -- as defined in section 7 of the report
 -- The library does parse tab and \r\n and whitespace
 module Data.SExpresso.Language.SchemeR5RS (
-  -- * SchemeToken and Datum related data types and functions 
-  SExprType(..),
-  SchemeToken(..),
-  tokenParser,
-  sexpr,
-
+  -- * Scheme Datum
   Datum(..),
-  sexpr2Datum,
+  datum,
 
   -- * Scheme R5RS whitespace parsers
   whitespace,
@@ -36,7 +31,7 @@ module Data.SExpresso.Language.SchemeR5RS (
   interTokenSpace,
   interTokenSpace1,
 
-  -- * Individual parser for each of the constructors of SchemeToken
+  -- * Individual parser for each of the constructors of Datum
   identifier,
   boolean,
   character,
@@ -45,7 +40,8 @@ module Data.SExpresso.Language.SchemeR5RS (
   quasiquote,
   comma,
   commaAt,
-  dot,
+  vector,
+  list,
 
   -- ** Scheme Number
   --
@@ -81,148 +77,61 @@ import qualified Data.Char as C
 import qualified Data.Text as T
 import qualified Data.Text.Lazy as L
 import qualified Data.Text.Lazy.Builder as B
-import Data.Foldable
 import Text.Megaparsec
 import Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as ML
-import Data.SExpresso.SExpr
 import Data.SExpresso.Parse
 
--- | The 'SchemeToken' data type defines the atoms of an Scheme R5RS
--- s-expression. An @'SExpr' 'SExprType' 'SchemeToken'@ object
--- containning the atoms 'TQuote', 'TQuasiquote', 'TComma', 'TCommaAt'
--- and 'TDot' need futher processing in order to get what the R5RS
--- report calls a datum. See also 'Datum'.
-data SchemeToken =
-  -- | A boolean.
-  TBoolean Bool
-  -- | A number. See 'SchemeNumber'.
-  | TNumber SchemeNumber
-  -- | A unicode character.
-  | TChar Char
-  -- | A string.
-  | TString T.Text
+-- | The 'Datum' data type implements the Scheme R5RS definition of a Datum.
+data Datum
+  = DBoolean Bool
+  -- | See 'SchemeNumber'.
+  | DNumber SchemeNumber
+  | DChar Char
+  | DString T.Text
   -- | A valid R5RS identifier.
-  | TIdentifier T.Text
-  -- | The quote (') symbol.
-  | TQuote
-  -- | The quasiquote (`) symbol.
-  | TQuasiquote
-  -- | The comma (,) symbol.
-  | TComma
-  -- | The comma at (,\@) symbol.
-  | TCommaAt
-  -- | The dot (.) symbol.
-  | TDot
+  | DIdentifier T.Text
+  | DList [Datum]
+  | DDotList [Datum] Datum
+  | DQuote Datum
+  | DQuasiquote Datum
+  | DComma Datum
+  | DCommaAt Datum
+  | DVector [Datum]
   deriving (Eq, Show)
 
--- | The 'tokenParser' parses a 'SchemeToken'
-tokenParser :: (MonadParsec e s m, Token s ~ Char) => m SchemeToken
-tokenParser = (boolean >>= return . TBoolean) <|>
+datumSpacingRule :: Datum -> Datum -> SeparatorRule
+datumSpacingRule (DString _) _ = SOptional
+datumSpacingRule _ (DString _) = SOptional
+-- No space is need before a quote, quasiquote, comma or commaAt.
+-- After the datum, it depends on which one it is
+datumSpacingRule (DQuote x1) x2  = datumSpacingRule x1 x2
+datumSpacingRule _ (DQuote _)  = SOptional
+datumSpacingRule (DQuasiquote x1) x2  = datumSpacingRule x1 x2
+datumSpacingRule _ (DQuasiquote _)  = SOptional
+datumSpacingRule  (DComma x1) x2  = datumSpacingRule x1 x2
+datumSpacingRule _ (DComma _)  = SOptional
+datumSpacingRule (DCommaAt x1) x2  = datumSpacingRule x1 x2
+datumSpacingRule _ (DCommaAt _)  = SOptional
+datumSpacingRule _ _ = SMandatory
+
+-- | 'datum' parses a 'Datum'
+datum :: (MonadParsec e s m, Token s ~ Char) => m Datum
+datum = (DBoolean <$> boolean) <|>
               -- character must come before number
-              (character >>= return . TChar) <|>
-              (stringParser >>= return . TString) <|>
-              (identifier >>= return . TIdentifier) <|>
-              (quote >> return TQuote) <|>
-              (quasiquote >> return TQuasiquote) <|>
-              -- commaAt must come before comma
-              (commaAt >> return TCommaAt) <|> 
-              (comma >> return TComma) <|>
-              -- We must try number because it can conflict with the dot ex : .2 and (a . b)
-              (try number >>= return . TNumber) <|>
-              (dot >> return TDot)
+        (DChar <$> character) <|>
+        (DString <$> stringParser) <|>
+        (DIdentifier <$> identifier) <|>
+        (DQuote <$> quote) <|>
+        (DQuasiquote <$> quasiquote) <|>
+        -- commaAt must come before comma
+        (DCommaAt <$> commaAt) <|> 
+        (DComma <$> comma) <|>
+        -- We must try number because it can conflict with the dot ex : .2 and (a . b)
+        (DNumber <$> try number) <|>
+        (DVector <$> vector) <|>
+        (either DList (uncurry DDotList) <$> list)
               
-
-
-spacingRule :: SchemeToken -> SpacingRule
-spacingRule (TString _) = SOptional
-spacingRule TQuote = SOptional
-spacingRule TQuasiquote  = SOptional
-spacingRule TComma = SOptional
-spacingRule TCommaAt = SOptional
-spacingRule _ = SMandatory
-
--- | Scheme R5RS defines two types of s-expressions. Standard list
--- beginning with '(' and vector beginning with '#('. The 'SExprType'
--- data type indicates which one was parsed.
-data SExprType =
-  -- | A standard list
-  STList
-  -- | A vector
-  | STVector
-  deriving (Eq, Show)
-
--- | The 'sexpr' defines a 'SExprParser' to parse a Scheme R5RS
--- s-expression as an @'SExpr' 'SExprType' 'SchemeToken'@. If you also
--- want source position see the 'withLocation' function.
---
--- Space is optional before and after the following tokens:
---
--- * 'TString'
--- * 'TQuote'
--- * 'TQuasiquote'
--- * 'TComma'
--- * 'TCommaAt'
-sexpr :: forall e s m . (MonadParsec e s m, Token s ~ Char) => SExprParser m SExprType SchemeToken
-sexpr =
-  let sTag = (single '(' >> return STList) <|> (chunk (tokensToChunk (Proxy :: Proxy s) "#(") >> return STVector)
-      eTag = \t -> single ')' >> return t
-  in SExprParser sTag eTag tokenParser interTokenSpace1 (mkSpacingRule spacingRule)
-
--- | The 'Datum' data type implements the Scheme R5RS definition of a Datum. See also 'sexpr2Datum'.
-data Datum = DBoolean Bool
-           | DNumber SchemeNumber
-           | DChar Char
-           | DString T.Text
-           | DIdentifier T.Text
-           | DList [Datum]
-           | DDotList [Datum] Datum
-           | DQuote Datum
-           | DQuasiquote Datum
-           | DComma Datum
-           | DCommaAt Datum
-           | DVector [Datum]
-           deriving (Eq, Show)
-
--- | The 'sexpr2Datum' function takes a list of 'SchemeToken' and
--- returns a list of 'Datum'. In case of failure it will report an
--- error, hence the 'Either' data type in the signature.
---
--- As defined in the Scheme R5RS report, the 'TQuote', 'TQuasiquote',
--- 'TComma', 'TCommaAt' and 'TDot' tokens must be followed by another
--- token.
-sexpr2Datum :: [SExpr SExprType SchemeToken] -> Either String [Datum]
-sexpr2Datum = foldrM vectorFold []
-  where vectorFold :: SExpr SExprType SchemeToken -> [Datum] -> Either String [Datum]
-        vectorFold (SAtom TQuote) [] = Left $ "Expecting a datum after a quote"
-        vectorFold (SAtom TQuote) (x : xs) = pure $ DQuote x : xs
-        vectorFold (SAtom TQuasiquote) [] = Left $ "Expecting a datum after a quasiquote"
-        vectorFold (SAtom TQuasiquote) (x : xs) = pure $ DQuasiquote x : xs
-        vectorFold (SAtom TComma) [] = Left $ "Expecting a datum after a comma"
-        vectorFold (SAtom TComma) (x : xs) = pure $ DComma x : xs
-        vectorFold (SAtom TCommaAt) [] = Left $ "Expecting a datum after a commaAt"
-        vectorFold (SAtom TCommaAt) (x : xs) = pure $ DCommaAt x : xs
-        vectorFold (SAtom TDot) _ = Left "Unexpected dot"
-        vectorFold (SList STVector xs) acc = ((:) . DVector) <$> sexpr2Datum xs <*> pure acc
-        vectorFold (SList STList xs) acc =
-          let chooseConstructor (isDotList, ls) = (:) (if isDotList
-                                                       then DDotList (init ls) (last ls)
-                                                       else DList ls)
-          in chooseConstructor <$> (foldrM listFold (False, []) xs) <*> pure acc
-        vectorFold (SAtom x) acc = pure $ simpleToken x : acc
-
-        simpleToken :: SchemeToken -> Datum
-        simpleToken (TBoolean x) = DBoolean x
-        simpleToken (TNumber x) = DNumber x
-        simpleToken (TChar x) = DChar x
-        simpleToken (TString x) = DString x
-        simpleToken (TIdentifier x) = DIdentifier x
-        simpleToken _ = error "simpleToken only handles a subset of SchemeToken constructors"
-
-        listFold :: SExpr SExprType SchemeToken -> (Bool, [Datum]) -> Either String (Bool, [Datum])
-        listFold (SAtom TDot) (_, [x]) = pure (True, [x])
-        listFold x (d, acc) = (,) d <$> vectorFold x acc
-
 ------------------------- Whitespace and comments -------------------------
 -- | The 'whitespace' parser  parses one space, tab or end of line (\\n and \\r\\n).
 whitespace :: (MonadParsec e s m, Token s ~ Char) => m ()
@@ -583,23 +492,47 @@ suffix = do
   n <- udigit R10
   return $ Suffix p s n
 
-------------------------- Other tokens -------------------------
--- | The 'quote' parser parses a quote character (').
-quote :: (MonadParsec e s m, Token s ~ Char) => m Char
-quote = char '\''
 
--- | The 'quasiquote' parser parses a quasiquote character (`).
-quasiquote :: (MonadParsec e s m, Token s ~ Char) => m Char
-quasiquote = char '`'
+------------------------- Vector -------------------------
+-- | The 'vector' parser parses a Scheme R5RS vector.
+vector :: forall e s m . (MonadParsec e s m, Token s ~ Char) => m [Datum]
+vector = sepByList $ SListDefinition (chunk (tokensToChunk (Proxy :: Proxy s) "#("))
+                                     (char ')')
+                                     datum
+                                     interTokenSpace1
+                                     datumSpacingRule
 
--- | The 'comma' parser parses a comma (,).
-comma :: (MonadParsec e s m, Token s ~ Char) => m Char
-comma = char ','
 
--- | The 'commaAt' parser parses a comma followed by \@ (,\@).
-commaAt :: forall e s m . (MonadParsec e s m, Token s ~ Char) => m T.Text
-commaAt = chunk (tokensToChunk (Proxy :: Proxy s) ",@") >> return ",@"
+------------------------- Vector -------------------------
+-- | The 'list' parser parses a Scheme R5RS list.
+list :: (MonadParsec e s m, Token s ~ Char) => m (Either [Datum] ([Datum], Datum))
+list = do
+  _ <- char '(' >> interTokenSpace
+  xs <- sepEndByRule datum interTokenSpace1 datumSpacingRule
+  maybeDot <- optional (dot >> interTokenSpace1 >> datum)
+  _ <- char ')'
+  return $ maybe (Left xs) (\d -> Right $ (xs, d)) maybeDot
 
 -- | The 'dot' parser parses a single dot character (.).
-dot :: (MonadParsec e s m, Token s ~ Char) => m Char
-dot = char '.'
+dot :: (MonadParsec e s m, Token s ~ Char) => m ()
+dot = char '.' *> pure ()
+
+
+------------------------- Other tokens -------------------------
+-- | The 'quote' parser parses a quote character (').
+quote :: (MonadParsec e s m, Token s ~ Char) => m Datum
+quote = char '\'' >> interTokenSpace >> datum
+
+-- | The 'quasiquote' parser parses a quasiquote character (`).
+quasiquote :: (MonadParsec e s m, Token s ~ Char) => m Datum
+quasiquote = char '`' >> interTokenSpace >> datum
+
+-- | The 'comma' parser parses a comma (,).
+comma :: (MonadParsec e s m, Token s ~ Char) => m Datum
+comma = char ',' >> interTokenSpace >> datum
+
+-- | The 'commaAt' parser parses a comma followed by \@ (,\@).
+commaAt :: forall e s m . (MonadParsec e s m, Token s ~ Char) => m Datum
+commaAt = chunk (tokensToChunk (Proxy :: Proxy s) ",@") >>
+          interTokenSpace >>
+          datum

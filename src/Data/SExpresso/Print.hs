@@ -10,16 +10,38 @@
 -- ("Data.Text.Lazy") see "Data.Sexpresso.Print.Lazy"
 
 module Data.SExpresso.Print (
-  PL.SExprPrinter(..),
-  PL.mkPrinter,
-  flatPrint
+  SExprPrinter(..),
+  simplePrinter,
+  sexprTranslator,
+  flatPrint,
   ) where
 
-import qualified Data.Text as T
-import qualified Data.Text.Lazy as L
+import Data.List
 import Data.SExpresso.SExpr
-import qualified Data.SExpresso.Print.Lazy as PL
 
--- | Prints an 'SExpr' on a single line
-flatPrint :: PL.SExprPrinter b a -> SExpr b a -> T.Text
-flatPrint p s = L.toStrict $ PL.flatPrint p s
+type Translator s a = a -> Either (s, s, [a]) s
+
+-- | The 'SExprPrinter' defines how to print an object.
+data SExprPrinter s a = SExprPrinter {
+  translator :: Translator s a,
+  separator :: s
+  }
+
+-- | The 'simplePrinter' function returns a 'SExprPrinter' object configure with basic settings
+simplePrinter :: Translator s a -> s -> SExprPrinter s a
+simplePrinter t s = SExprPrinter t s
+
+sexprTranslator :: s -> s -> (a -> s) -> Translator s (SExpr a)
+sexprTranslator sTag eTag atom =
+  let f s = case s of
+              SList as -> Left (sTag, eTag, as)
+              SAtom a -> Right $ atom a
+  in f
+
+-- | Prints an 'SExpr' on a single line. Returns a 'B.Builder' instead of a lazy text 'L.Text'
+flatPrint :: (Monoid s) => SExprPrinter s a -> a -> s
+flatPrint p x = either printSList id (translator p x)
+
+  where printSList (sTag, eTag, as) = sTag <> flatPrintList as <> eTag
+
+        flatPrintList = mconcat . intersperse (separator p) . map (flatPrint p)
