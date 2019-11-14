@@ -17,26 +17,17 @@ type Parser = Parsec Void String
 asciiLetter :: Parser Char
 asciiLetter = oneOf (['a' .. 'z'] ++ ['A' .. 'Z'])
 
-pIdent :: Parser String
-pIdent = some asciiLetter
-
-pDigit :: Parser String
-pDigit = some digitChar
-
-listDef :: SListDefinition Parser String
-listDef = plainSListDefinition (pIdent <|> pDigit)
+pAtom :: Parser String
+pAtom = some asciiLetter <|> some digitChar
 
 pSExpr :: Parser (SExpr String)
-pSExpr = parseSExpr listDef
+pSExpr = simpleSExpr pAtom
 
-pDecodeOne :: Parser (SExpr String)
-pDecodeOne = decodeOne listDef
-
-pDecode :: Parser [SExpr String]
-pDecode = decode listDef
+pManySExpr1 :: Parser [SExpr String]
+pManySExpr1 = simpleManySExpr1 pAtom
 
 pOptionalSpace :: Parser (SExpr String)
-pOptionalSpace = decodeOne $ setSepRule sepIsOptional listDef
+pOptionalSpace = sexpr (char '(') (char ')') pAtom space1 sepIsOptional
 
 parseTestTree :: TestTree
 parseTestTree = testGroup "Parse/Generic.hs & Parse/Char.hs unit tests" $
@@ -70,48 +61,29 @@ parseTestTree = testGroup "Parse/Generic.hs & Parse/Char.hs unit tests" $
         let s = "(foo1234)"
         in testCase (show s) $ (isLeft $ tparse p "(foo1234)") @? "Parsing must fail. foo and 1234 are not separated by whitespace"
         ]
-                         
-      decodeCommon :: (Eq a, Show a) => Parser a -> (SExpr String -> a) -> [TestTree]
-      decodeCommon p f = [
-        let s = " () " in testCase (show s) $ tparse p s @?= (Right $ f (SList [])),
-        let s = " ()" in testCase (show s) $ tparse p s @?= (Right $ f (SList [])),
-        let s = "() " in testCase (show s) $ tparse p s @?= (Right $ f (SList [])),
-        let s = "   ()   " in testCase (show s) $ tparse p s @?= (Right $ f (SList []))
-        ]
   in
     [
       testGroup "parseSExpr" $ sExprTests pSExpr id ++
       [
         let s = " foo"
-        in testCase (show s) $ (isLeft $ tparse pSExpr s) @? "Parsing must fail. parseSExpr should not parse whitespace"
+        in testCase (show s) $ (isLeft $ tparse pSExpr s) @? "Parsing must fail. sexpr should not parse whitespace"
       ],
-      testGroup "decondeOne" $ sExprTests pDecodeOne id ++
-      decodeCommon pDecodeOne id ++
+     testGroup "manySExpr1" $ sExprTests pManySExpr1 (\x -> [x]) ++
       [
-        let s = "() err" in testCase (show s) $ (isLeft $ tparse pDecodeOne s) @? "Parsing must fail. 2 SExpr",
-        let s = "err ()" in testCase (show s) $ (isLeft $ tparse pDecodeOne s) @? "Parsing must fail. 2 SExpr",
-        let s = "()err" in testCase (show s) $ (isLeft $ tparse pDecodeOne s) @? "Parsing must fail. 2 SExpr",
-        let s = "err()" in testCase (show s) $ (isLeft $ tparse pDecodeOne s) @? "Parsing must fail. 2 SExpr"
-      ],
-     testGroup "decode" $ sExprTests pDecode (\x -> [x]) ++
-     decodeCommon pDecode (\x -> [x]) ++
-      [
-        let s = "()()" in testCase (show s) $ tparse pDecode s @?= Right [SList [], SList []],
-        let s = " ()()" in testCase (show s) $ tparse pDecode s @?= Right [SList [], SList []],
-        let s = "() ()" in testCase (show s) $ tparse pDecode s @?= Right [SList [], SList []],
-        let s = "()() " in testCase (show s) $ tparse pDecode s @?= Right [SList [], SList []],
-        let s = "  ()  ()  " in testCase (show s) $ tparse pDecode s @?= Right [SList [], SList []],
-        let s = "(foo)(1234)" in testCase (show s) $ tparse pDecode s @?= Right [SList [SAtom "foo"], SList [SAtom "1234"]],
-        let s = " (foo)(1234)" in testCase (show s) $ tparse pDecode s @?= Right [SList [SAtom "foo"], SList [SAtom "1234"]],
-        let s = "(foo) (1234)" in testCase (show s) $ tparse pDecode s @?= Right [SList [SAtom "foo"], SList [SAtom "1234"]],
-        let s = "(foo)(1234) " in testCase (show s) $ tparse pDecode s @?= Right [SList [SAtom "foo"], SList [SAtom "1234"]],
-        let s = "  (foo)  (1234)  " in testCase (show s) $ tparse pDecode s @?= Right [SList [SAtom "foo"], SList [SAtom "1234"]],
-        let s = "(foo) 1234" in testCase (show s) $ tparse pDecode s @?= Right [SList [SAtom "foo"], SAtom "1234"],
-        let s = "foo 1234" in testCase (show s) $ tparse pDecode s @?= Right [SAtom "foo", SAtom "1234"],
-        let s = "foo(1234)" in testCase (show s) $ tparse pDecode s @?= Right [SAtom "foo", SList [SAtom "1234"]],
-        let s = "(foo)1234" in testCase (show s) $ tparse pDecode s @?= Right [SList [SAtom "foo"], SAtom "1234"],
+        let s = "()()" in testCase (show s) $ tparse pManySExpr1 s @?= Right [SList [], SList []],
+        let s = "() ()" in testCase (show s) $ tparse pManySExpr1 s @?= Right [SList [], SList []],
+        let s = "()() " in testCase (show s) $ tparse pManySExpr1 s @?= Right [SList [], SList []],
+        let s = "(foo)(1234)" in testCase (show s) $ tparse pManySExpr1 s @?= Right [SList [SAtom "foo"], SList [SAtom "1234"]],
+        let s = "(foo) (1234)" in testCase (show s) $ tparse pManySExpr1 s @?= Right [SList [SAtom "foo"], SList [SAtom "1234"]],
+        let s = "(foo)(1234) " in testCase (show s) $ tparse pManySExpr1 s @?= Right [SList [SAtom "foo"], SList [SAtom "1234"]],
+        let s = "(foo) 1234" in testCase (show s) $ tparse pManySExpr1 s @?= Right [SList [SAtom "foo"], SAtom "1234"],
+        let s = "foo 1234" in testCase (show s) $ tparse pManySExpr1 s @?= Right [SAtom "foo", SAtom "1234"],
+        let s = "foo(1234)" in testCase (show s) $ tparse pManySExpr1 s @?= Right [SAtom "foo", SList [SAtom "1234"]],
+        let s = "(foo)1234" in testCase (show s) $ tparse pManySExpr1 s @?= Right [SList [SAtom "foo"], SAtom "1234"],
         let s = "bar1234"
-        in testCase (show s) $ (isLeft $ tparse pDecode s) @? "Parsing must fail. bar and 1234 are not separated by whitespace"
+        in testCase (show s) $ (isLeft $ tparse pManySExpr1 s) @? "Parsing must fail. bar and 1234 are not separated by whitespace",
+        let s = " foo"
+        in testCase (show s) $ (isLeft $ tparse pSExpr s) @? "Parsing must fail. manySExpr1 should not parse whitespace"
       ],
      testGroup "spaceIsOptional" $ [
         let s = "(foo1234)"

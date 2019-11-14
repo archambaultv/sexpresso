@@ -13,10 +13,13 @@ file for examples
 
 * Remove SchemeToken and related functions. Scheme R5RS directly parses Datum.
 
-* Replace SExprParser with SListDefinition
-* Add sepByRule, sepByRule1, sepEndByRule, sepEndByRule1, sepList functions to help parse custom S-expression
+* Remove SExprParser
+* Remove decode and decodeOne functions
+* Rename parseSExpr -> sexpr
+* Add manySExpr and manySExpr1 parsers
+* Add sepByRule, sepEndByRule, sepByList families of functions to help parse custom S-expression
 
-* Change constructor of SExprParser so that it works for any type isomorphic to SExpr
+* Change constructor of SExprPrinter so that it works for any type isomorphic to SExpr
 * The printer now works for any Monoid instead of text
 * Remove Print.Lazy since it now works for all Monoid instances
 

@@ -32,8 +32,8 @@ pDigit = do
     Nothing -> return n
     Just _ -> return (-1 * n)
 
-sexpParser :: SListDefinition Parser Integer
-sexpParser = plainSListDefinition pDigit
+sexpParser :: Parser (SExpr Integer)
+sexpParser = simpleSExpr pDigit
 
 printTestTree :: TestTree
 printTestTree = testGroup "Print.hs unit tests" $
@@ -45,6 +45,6 @@ printTestTree = testGroup "Print.hs unit tests" $
       testCase "SList 3/3" $ flatPrint printer (SList [SList [SAtom 1], SAtom 2, SList [SAtom 3]] :: SExpr Integer) @?= "((1) 2 (3))",
       testCase "SAtom" $ flatPrint printer (SAtom 3 :: SExpr Integer) @?= "3",
       SC.testProperty "decodeOne inverse of flatPrint" $
-      \s -> parse (decodeOne sexpParser) "" (flatPrint printer (s :: SExpr Integer)) == Right s
+      \s -> parse (sexpParser) "" (flatPrint printer (s :: SExpr Integer)) == Right s
       ]
   ]
