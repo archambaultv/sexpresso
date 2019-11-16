@@ -39,7 +39,7 @@ endPosPretty :: Span -> String
 endPosPretty s = sourcePosPretty $ endPos s
 
 -- | The 'Located' datatype adds a source span to the type @a@
-data Located a = At Span a
+data Located a = At {sourceSpan :: Span,  unlocate :: a}
                deriving (Eq, Ord, Show, Functor)
 
 -- | The 'located' function adds a source span to a parser.
