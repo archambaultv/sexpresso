@@ -9,7 +9,7 @@
 -- The module "Data.SExpresso.Parse" re-exports the functions and
 -- datatypes of this module.
 
-{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE DeriveFunctor, DeriveFoldable, DeriveTraversable #-}
 
 module Data.SExpresso.Parse.Location
   (
@@ -40,7 +40,7 @@ endPosPretty s = sourcePosPretty $ endPos s
 
 -- | The 'Located' datatype adds a source span to the type @a@
 data Located a = At {sourceSpan :: Span,  unlocate :: a}
-               deriving (Eq, Ord, Show, Functor)
+               deriving (Eq, Ord, Show, Functor, Foldable, Traversable)
 
 -- | The 'located' function adds a source span to a parser.
 located :: (MonadParsec e s m) => m a -> m (Located a)
