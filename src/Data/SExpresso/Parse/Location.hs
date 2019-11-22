@@ -14,7 +14,7 @@
 module Data.SExpresso.Parse.Location
   (
     Span(..),
-    Located(..),
+    Located,
     located,
     startPosPretty,
     endPosPretty
@@ -23,7 +23,6 @@ module Data.SExpresso.Parse.Location
 
 import Text.Megaparsec
 
--- Taken from https://www.reddit.com/r/haskell/comments/4x22f9/labelling_ast_nodes_with_locations/d6cmdy9/
 
 -- | The 'Location' datatype represents a source span 
 data Span = Span {startPos :: SourcePos,
@@ -38,9 +37,8 @@ startPosPretty s = sourcePosPretty $ startPos s
 endPosPretty :: Span -> String
 endPosPretty s = sourcePosPretty $ endPos s
 
--- | The 'Located' datatype adds a source span to the type @a@
-data Located a = At {sourceSpan :: Span,  unlocate :: a}
-               deriving (Eq, Ord, Show, Functor, Foldable, Traversable)
+-- | The 'Located' type represents an object @a@ tagged with a source span
+type Located a = (Span, a)
 
 -- | The 'located' function adds a source span to a parser.
 located :: (MonadParsec e s m) => m a -> m (Located a)
@@ -48,4 +46,4 @@ located parser = do
   begin <- getSourcePos
   result <- parser
   end <- getSourcePos
-  return $ At (Span begin end) result
+  return $ (Span begin end, result)

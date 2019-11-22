@@ -10,6 +10,7 @@ type. It will break existing code with version 1.x.x.x.
 file for examples
 
 * Rename data type Location to Span
+* Located in now a alias for the tuple (Span, a)
 
 * Remove SchemeToken and related functions. Scheme R5RS directly parses Datum.
 
@@ -18,6 +19,8 @@ file for examples
 * Rename parseSExpr -> sexpr
 * Add manySExpr and manySExpr1 parsers
 * Add sepByRule, sepEndByRule, sepByList families of functions to help parse custom S-expression
+
+* Add Foldable, Traversable instance for Located
 
 * Change constructor of SExprPrinter so that it works for any type isomorphic to SExpr
 * The printer now works for any Monoid instead of text
