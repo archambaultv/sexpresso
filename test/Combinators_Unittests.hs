@@ -1,5 +1,5 @@
-module Parse_Unittests (
-  parseTestTree
+module Combinators_Unittests (
+  combinatorTestTree
   )where
 
 import Data.Void
@@ -26,8 +26,8 @@ pSExpr = sexpr (char '(') (const $ char ')') pAtom space1 sepIsMandatory
 pOptionalSpace :: Parser (SExpr String)
 pOptionalSpace = sexpr (char '(') (const $ char ')') pAtom space1 sepIsOptional
 
-parseTestTree :: TestTree
-parseTestTree = testGroup "Parse/Combinator.hs unit tests" $
+combinatorTestTree :: TestTree
+combinatorTestTree = testGroup "Parse/Combinator.hs unit tests" $
   let tparse :: Parser a -> String -> Either String a
       tparse p s = first M.errorBundlePretty $ M.parse p "" s
 
