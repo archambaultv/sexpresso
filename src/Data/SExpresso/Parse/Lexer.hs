@@ -147,7 +147,13 @@ instance (Ord b, Ord c, Ord a, Show b, Show c, Show a, Stream s) => Stream (SExp
   reachOffset o p =
     let streamTok = tokenStream $ pstateInput p
         (preTokens, postTokens) = splitAt (o - pstateOffset p) streamTok
-        strOffset = sum $ map tokenLength preTokens
+        strOffset = if null preTokens
+                    then inputOffset $ pstateInput p
+                    else if null postTokens
+                         then let l = last preTokens
+                              in tokenOffset l + tokenLength l
+                         else tokenOffset (head postTokens)
+                              
         (pos, line, strPosState) = reachOffset strOffset (inputPosState $ pstateInput p)
     in (pos,
         line,

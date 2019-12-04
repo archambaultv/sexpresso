@@ -28,6 +28,15 @@ stream = L.sexprStream (char '(') (char ')') pAtom space1 sepIsMandatory
 str :: String
 str = "(foo 1 2) (p 42 bar)\n(baz 25)\nx"
 
+tup1 :: (a,b,c) -> a
+tup1 (x,_,_) = x
+
+tup2 :: (a,b,c) -> b
+tup2 (_,x,_) = x
+
+mkPosState :: s -> PosState s
+mkPosState x = PosState x 0 (initialPos "") defaultTabWidth ""
+
 lexerTestTree :: TestTree
 lexerTestTree = testGroup "Parse/Combinator.hs unit tests" $
   let tparse :: Parser a -> String -> Either String a
@@ -68,6 +77,21 @@ lexerTestTree = testGroup "Parse/Combinator.hs unit tests" $
         testCase "inputOffset - 1" $ (L.inputOffset <$> tparse stream str) @?= (Right $ 0),
         testCase "inputOffset - 2" $ (fmap (L.inputOffset . snd) . take1_ <$> tparse stream str) @?= (Right $ Just 1),
         testCase "inputOffset - 3" $ (fmap (L.inputOffset . snd) . takeN_ 2 <$> tparse stream str) @?= (Right $ Just 5),
-        testCase "inputOffset - 4" $ (L.inputOffset . snd . takeWhile_ (const True) <$> tparse stream str) @?= (Right $ length str)
+        testCase "inputOffset - 4" $ (L.inputOffset . snd . takeWhile_ (const True) <$> tparse stream str) @?= (Right $ length str),
+
+        testCase "PosState - 1" $ (tup1 . reachOffset 2 . mkPosState <$> tparse stream str)
+                                   @?= (Right $ SourcePos "" (mkPos 1) (mkPos 6)),
+        testCase "PosState - 2" $ (tup2 . reachOffset 2 . mkPosState <$> tparse stream str)
+                                   @?= (Right $ "(foo 1 2) (p 42 bar)"),
+        
+        testCase "PosState - 3" $ (tup1 . reachOffset 10 . mkPosState <$> tparse stream str)
+                                   @?= (Right $ SourcePos "" (mkPos 2) (mkPos 1)),
+        testCase "PosState - 4" $ (tup2 . reachOffset 10 . mkPosState <$> tparse stream str)
+                                   @?= (Right $ "(baz 25)"),
+        
+        testCase "PosState - 3" $ (tup1 . reachOffset 50 . mkPosState <$> tparse stream str)
+                                   @?= (Right $ SourcePos "" (mkPos 3) (mkPos 2)),
+        testCase "PosState - 4" $ (tup2 . reachOffset 50 . mkPosState <$> tparse stream str)
+                                   @?= (Right $ "x")
       ]
     ]
