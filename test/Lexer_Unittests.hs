@@ -31,9 +31,23 @@ lexerTestTree = testGroup "Parse/Combinator.hs unit tests" $
     [
       testGroup "lexer" 
       [
+        
+        let s = "" in testCase (show s) $ tparse lexer s @?= (Right $ []),
+        let s = "       " in testCase (show s) $ tparse lexer s @?= (Right $ []),
         let s = "()" in testCase (show s) $ tparse lexer s @?= (Right $ [((0,1), L.OpenDelimiter '('),
                                                                           ((1,1), L.CloseDelimiter ')')]),
         let s = " ( ) " in testCase (show s) $ tparse lexer s @?= (Right $ [((1,1), L.OpenDelimiter '('),
-                                                                          ((3,1), L.CloseDelimiter ')')])
+                                                                            ((3,1), L.CloseDelimiter ')')]),
+        let s = " ) ( " in testCase (show s) $ tparse lexer s @?= (Right $ [((1,1), L.CloseDelimiter ')'),
+                                                                            ((3,1), L.OpenDelimiter '(')]),
+        let s = "(foo 1 2)" in testCase (show s) $ tparse lexer s @?= (Right $ [((0,1), L.OpenDelimiter '('),
+                                                                                ((1,3), L.AtomToken "foo"),
+                                                                                ((5,1), L.AtomToken "1"),
+                                                                                ((7,1), L.AtomToken "2"),
+                                                                                ((8,1), L.CloseDelimiter ')')]),
+        let s = " foo ( 12 " in testCase (show s) $ tparse lexer s @?= (Right $ [((1,3), L.AtomToken "foo"),
+                                                                                ((5,1), L.OpenDelimiter '('),
+                                                                                ((7,2), L.AtomToken "12")])
+                                                                                
       ]
     ]
