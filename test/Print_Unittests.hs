@@ -33,7 +33,7 @@ pDigit = do
     Just _ -> return (-1 * n)
 
 sexpParser :: Parser (SExpr Integer)
-sexpParser = simpleSExpr pDigit
+sexpParser = sexpr (char '(') (const $ char ')') pDigit space1 sepIsMandatory
 
 printTestTree :: TestTree
 printTestTree = testGroup "Print.hs unit tests" $

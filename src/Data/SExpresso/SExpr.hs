@@ -14,24 +14,33 @@
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE DeriveFunctor, DeriveFoldable, DeriveTraversable #-}
+{-# LANGUAGE TupleSections #-}
 
 module Data.SExpresso.SExpr
   (
     SExpr(..),
-    pattern A,
-    pattern L,
+    SExprF(..),
+    SExprAnn,
+    getAnn,
+    removeAnn,
+    getSExprF,
+    pattern (:&),
+    pattern CAtom,
+    pattern CList,
     pattern (:::),
-    pattern Nil,
+    pattern SNil,
+--    pattern CNil,
     isAtom,
     sAtom,
     isList,
     sList,
-    sexprToTree,
-    treeToSExpr
+    sexprToTree
   )
   where
 
 import Data.Tree
+import Data.Functor.Compose
+import Data.Functor.Foldable
 import Data.Functor.Foldable.TH
 
 -- | The datatype 'SExpr' is the definition of an S-expression for the
@@ -44,19 +53,42 @@ data SExpr a = SList [SExpr a]
 
 $(makeBaseFunctor ''SExpr)
 
+-- | The type 'SExprAnn' represents a annotated SExpr where each node is annotated
+type SExprAnn info a = Fix (Compose ((,) info) (SExprF a))
+
+getAnn :: SExprAnn info a -> info
+getAnn = fst . getCompose . unfix
+
+getSExprF :: SExprAnn info a -> SExprF a (SExprAnn info a)
+getSExprF = snd . getCompose . unfix
+
+-- | Pattern for the Compose functor. Usefull for writing algebra and
+-- co-algebra for 'SExprAnn'.
+pattern (:&) :: info -> f a -> Compose ((,) info) f a
+pattern x :& y = Compose (x, y)
+
+removeAnn :: SExprAnn info a -> SExpr a
+removeAnn = hoist (snd . getCompose)
+                             
 -- | Pattern for matching only the sublist of the 'SList' constructor.
 -- See also the Sexp pattern synonym.
 --
 -- >foo (L xs) = xs -- Equivalent to foo (SList xs) = xs
-pattern L :: [SExpr a] -> SExpr a
-pattern L xs = SList xs
+pattern CList :: info -> [SExprAnn info a] -> SExprAnn info a
+pattern CList info xs = Fix (Compose (info, SListF xs))
+
+-- pattern LC :: info -> [SExprAnn info a] -> SExprAnn info a
+-- pattern LC info xs = Fix (info :& SListF xs)
 
 -- | Shorthand for 'SAtom'.
 --
 -- >foo (A x) = x -- Equivalent to foo (SAtom x) = x
 -- > a = A 3      -- Equivalent to a = SAtom 3
-pattern A :: a -> SExpr a
-pattern A x = SAtom x
+pattern CAtom :: info -> a -> SExprAnn info a
+pattern CAtom info x = Fix (Compose (info, SAtomF x))
+
+-- pattern AC :: info -> a -> SExprAnn info a
+-- pattern AC info x = Fix (Compose (info, SAtomF x))
 
 uncons :: SExpr a -> Maybe (SExpr a, SExpr a)
 uncons (SAtom _) = Nothing
@@ -64,7 +96,7 @@ uncons (SList []) = Nothing
 uncons (SList (x:xs)) = Just (x, SList xs)
 
 -- | Pattern specifying the shape of the sublist of the 'SList' constructor.
--- See also 'Nil'.
+-- See also 'SNil'.
 --
 -- Although it aims to mimic the behavior of the cons (:) constructor
 -- for list, this pattern behavior is a little bit different. Indeed
@@ -98,32 +130,35 @@ pattern (:::) :: SExpr a -> SExpr a -> SExpr a
 pattern x ::: xs <- (uncons -> Just (x, xs))
 
 -- | Pattern to mark the end of the list when using the pattern synonym ':::'
-pattern Nil :: SExpr a
-pattern Nil = SList []
+pattern SNil :: SExpr a
+pattern SNil = SList []
+
+-- pattern CNil :: info -> SExprAnn info a
+-- pattern CNil info = Fix (Compose (info, SListF []))
 
 -- | The 'isAtom' function returns 'True' iff its argument is of the
 -- form @SAtom _@.
 isAtom :: SExpr a -> Bool
-isAtom (A _) = True
+isAtom (SAtom _) = True
 isAtom _ = False
 
 -- | The 'sAtom' function returns 'Nothing' if its argument is of the
 -- form @SList _ _@ and @'Just' a@ if its argument is of the form @SAtom _@..
 sAtom :: SExpr a -> Maybe a
-sAtom (A x) = Just x
+sAtom (SAtom x) = Just x
 sAtom _ = Nothing
 
 -- | The 'isList' function returns 'True' iff its argument is of the
 -- form @SList _ _@.
 isList :: SExpr a -> Bool
-isList (L _) = True
+isList (SList _) = True
 isList _ = False
 
 -- | The 'sList' function returns 'Nothing' if its argument is of the
 -- form @SAtom _@ and the sublist @xs@ if its argument is of the form
 -- @SList _ xs@.
 sList :: SExpr a -> Maybe [SExpr a]
-sList (L l) = Just l
+sList (SList l) = Just l
 sList _ = Nothing
 
 -- | The 'sexprToTree' function returns a @'Tree' ('Maybe' a)@ object
@@ -132,10 +167,3 @@ sList _ = Nothing
 sexprToTree :: SExpr a -> Tree (Maybe a)
 sexprToTree (SAtom a) = Node (Just a) []
 sexprToTree (SList as) = Node Nothing (map sexprToTree as)
-
--- | The 'treeToSExpr' function returns a 'SExpr' object from a 'Tree'
--- object by only considering the leaves and ignoring the values of
--- internal nodes.
-treeToSExpr :: Tree a -> SExpr a
-treeToSExpr (Node a []) = A a
-treeToSExpr (Node _ as) = L (map treeToSExpr as)

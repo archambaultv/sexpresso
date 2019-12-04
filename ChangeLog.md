@@ -5,22 +5,20 @@ Version 2.0.0.0
 This version features a different approach for parsing, printing and for the `SExpr` data
 type. It will break existing code with version 1.x.x.x.
 
+* Add a lexer and a new Megaparsec stream. The lexer helps dealing with whitespace and separatorRule. It also makes parsing text as s-expression to a custom data type easier.
+
 * Remove the `b` parameter in the datatype `SExpr`. For keeping metadata about
-  the `SList` constructor use the recursive scheme approach. See the README
+  the `SList` constructor use the SExprAnn type (recursive scheme). See the README
 file for examples
 
-* Rename data type Location to Span
-* Located in now a alias for the tuple (Span, a)
+* Remove Parse/Location.hs. See Lexer
 
-* Remove SchemeToken and related functions. Scheme R5RS directly parses Datum.
+* Remove SchemeToken and related functions in R5RS. Scheme R5RS directly parses Datum.
 
 * Remove SExprParser
 * Remove decode and decodeOne functions
 * Rename parseSExpr -> sexpr
-* Add manySExpr and manySExpr1 parsers
-* Add sepByRule, sepEndByRule, sepByList families of functions to help parse custom S-expression
-
-* Add Foldable, Traversable instance for Located
+* Add sepByRule, sepEndByRule, families of functions to help parse custom S-expression
 
 * Change constructor of SExprPrinter so that it works for any type isomorphic to SExpr
 * The printer now works for any Monoid instead of text

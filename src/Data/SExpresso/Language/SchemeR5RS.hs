@@ -496,12 +496,10 @@ suffix = do
 ------------------------- Vector -------------------------
 -- | The 'vector' parser parses a Scheme R5RS vector.
 vector :: forall e s m . (MonadParsec e s m, Token s ~ Char) => m [Datum]
-vector = sepEndByList
-         (chunk (tokensToChunk (Proxy :: Proxy s) "#("))
-         (char ')')
-         datum
-         interTokenSpace1
-         datumSpacingRule
+vector = between (chunk (tokensToChunk (Proxy :: Proxy s) "#(") >> interTokenSpace) (char ')') $
+         sepEndByRule datum
+                      interTokenSpace1
+                      datumSpacingRule
 
 
 ------------------------- Vector -------------------------

@@ -1,5 +1,5 @@
 -- |
--- Module      :  Data.SExpresso.Parse.Generic
+-- Module      :  Data.SExpresso.Parse.Combinators
 -- Copyright   :  © 2019 Vincent Archambault
 -- License     :  0BSD
 --
@@ -22,7 +22,7 @@
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE TypeFamilies #-}
 
-module Data.SExpresso.Parse.Generic
+module Data.SExpresso.Parse.Combinators
   (
     SeparatorRule(..),
     sepIsMandatory,
@@ -34,21 +34,16 @@ module Data.SExpresso.Parse.Generic
     sepEndByRule,
     sepEndByRule1,
 
-    sepByList,
-    sepByList1,
-    sepEndByList,
-    sepEndByList1,
-    
-    sexpr,
-    manySExpr,
-    manySExpr1
+    SourceOffset,
+    sexprAnn,
+    sexpr
    )
   where
 
 import Control.Applicative
-import Text.Megaparsec
+import Text.Megaparsec as M
 import Data.SExpresso.SExpr
-  
+
 -- | The 'SeparatorRule' datatype indicates if a separator is optional or mandatory between two consecutive tokens.
 data SeparatorRule =
   -- | Separator is mandatory
@@ -172,91 +167,39 @@ sepEndByRule1 p sep rule = p >>= go
         selectFailure (TrivialError _ unexpected2 expected) = failure unexpected2 expected
         selectFailure (FancyError _ expected) = fancyFailure expected
 
--- | The 'sepByList' function return a parser for parsing S-expression of the form @'SList' _ _@.
-sepByList :: (MonadParsec e s m) =>
-             m b ->
-             m c ->
-             m a ->
-             m sep ->
-             (a -> a -> SeparatorRule) ->
-             m [a]
-sepByList s e a sep r= between s e (sepByRule a sep r)
+type SourceOffset = (Int, Int) -- Offset and length
 
+sexprAnn :: (MonadParsec e s m)  =>
+         m b ->
+         (b -> m c) ->
+         m a ->
+         m sp ->
+         (a -> a -> SeparatorRule) ->
+         m (SExprAnn SourceOffset a)
+sexprAnn open close atom sep rule = atomP <|> listP
 
--- | The 'sepByList' function return a parser for parsing S-expression of the form @'SList' _ _@.
-sepByList1 :: (MonadParsec e s m) =>
-             m b ->
-             m c ->
-             m a ->
-             m sep ->
-             (a -> a -> SeparatorRule) ->
-             m [a]
-sepByList1 s e a sep r= between s e (sepByRule1 a sep r)
+  where atomP = do
+          offset1 <- getOffset
+          a <- atom
+          offset2 <- getOffset
+          return $ CAtom (offset1, offset2 - offset1) a
 
--- | The 'sepEndByList' function return a parser for parsing S-expression of the form @'SList' _ _@.
-sepEndByList :: (MonadParsec e s m) =>
-             m b ->
-             m c ->
-             m a ->
-             m sep ->
-             (a -> a -> SeparatorRule) ->
-             m [a]
-sepEndByList s e a sep r  = between s e (sepEndByRule a sep r)
+        listP = do
+          offset1 <- getOffset
+          o <- open <* optional sep
+          xs <- sepEndByRule (atomP <|> listP) sep rule2
+          _ <- close o
+          offset2 <- getOffset
+          return $ CList (offset1, offset2 - offset1) xs
 
+        rule2 (CAtom _ x1) (CAtom _ x2) = rule x1 x2
+        rule2 _ _ = SOptional
 
--- | The 'sepEndByList' function return a parser for parsing S-expression of the form @'SList' _ _@.
-sepEndByList1 :: (MonadParsec e s m) =>
-             m b ->
-             m c ->
-             m a ->
-             m sep ->
-             (a -> a -> SeparatorRule) ->
-             m [a]
-sepEndByList1 s e a sep r  = between s e (sepEndByRule1 a sep r)
-
-sexprRule :: (a -> a -> SeparatorRule) -> (SExpr a -> SExpr a -> SeparatorRule)
-sexprRule r =
-  let sepRule (SList _) _ = SOptional
-      sepRule _ (SList _) = SOptional
-      sepRule (SAtom x1) (SAtom x2) = r x1 x2
-  in sepRule
-
-
--- | The 'parseSExpr' function return a parser for parsing
--- S-expression ('SExpr'), that is either an atom (@'SAtom' _@) or a
--- list @'SList' _ _@. See also 'decodeOne' and 'decode'.
 sexpr :: (MonadParsec e s m) =>
-             m b ->
-             m c ->
-             m a ->
-             m sep ->
-             (a -> a -> SeparatorRule) ->
-             m (SExpr a)
-sexpr s e a sep r =
-  let p = (SAtom <$> a) <|> (SList <$> sepEndByList (s >> optional sep) e p sep (sexprRule r))
-  in p
-
-manySExpr :: (MonadParsec e s m) =>
-             m b ->
-             m c ->
-             m a ->
-             m sep ->
-             (a -> a -> SeparatorRule) ->
-             m [SExpr a]
-manySExpr s e a sep r =
-  let rSExpr = sexprRule r
-      p = (SAtom <$> a) <|> (SList <$> sepEndByList (s >> optional sep) e p sep rSExpr)
-  in sepEndByRule p sep rSExpr
-
-manySExpr1 :: (MonadParsec e s m) =>
-             m b ->
-             m c ->
-             m a ->
-             m sep ->
-             (a -> a -> SeparatorRule) ->
-             m [SExpr a]
-manySExpr1 s e a sep r =
-  let rSExpr = sexprRule r
-      p = (SAtom <$> a) <|> (SList <$> sepEndByList (s >> optional sep) e p sep rSExpr)
-  in sepEndByRule1 p sep rSExpr
-
+         m b ->
+         (b -> m c) ->
+         m a ->
+         m sp ->
+         (a -> a -> SeparatorRule) ->
+         m (SExpr a)
+sexpr open close atom sep rule = removeAnn <$> sexprAnn open close atom sep rule
