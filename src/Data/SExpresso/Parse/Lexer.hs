@@ -171,7 +171,7 @@ sexprLexer s e a sep r =
        p = toToken a AtomToken <|>
            toToken s OpenDelimiter <|>
            toToken e CloseDelimiter
-   in sepEndByRule p sep rSExpr
+   in optional sep *> sepEndByRule p sep rSExpr
 
 toToken :: (MonadParsec e s m) =>
              m z ->
