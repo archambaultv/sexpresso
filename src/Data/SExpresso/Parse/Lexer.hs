@@ -117,18 +117,28 @@ instance (Ord b, Ord c, Ord a, Show b, Show c, Show a, Stream s) => Stream (SExp
   chunkEmpty Proxy = null
 
   take1_ (SExprStream _ _ []) = Nothing
-  take1_ (SExprStream p o (t:ts)) = Just (snd t, SExprStream p (o + tokenLength t) ts)
+  take1_ (SExprStream p o (t:[])) = Just (snd t, SExprStream p (o + tokenLength t) [])
+  take1_ (SExprStream p _ (t:tn:ts)) = Just (snd t, SExprStream p (tokenOffset tn) (tn:ts))
 
   takeN_ n (SExprStream p o s)
     | n <= 0    = Just ([], SExprStream p o s)
     | null s    = Nothing
     | otherwise =
         let (x, s') = splitAt n s
-        in Just (map snd x, SExprStream p (o + sum (map tokenLength x)) s')
-
+        in  case s' of
+              [] -> let l = last x
+                    in Just (map snd x, SExprStream p (tokenOffset l + tokenLength l)  s')
+              (a:_) -> Just (map snd x, SExprStream p (tokenOffset a) s')
+              
   takeWhile_ f (SExprStream p o s) =
     let (x, s') = span (f . snd) s
-    in (map snd x, SExprStream p (o + sum (map tokenLength x)) s')
+    in case s' of
+         [] -> let offset = if null x
+                            then o
+                            else let l = last x
+                                 in (tokenOffset l + tokenLength l)
+               in (map snd x, SExprStream p offset  s')
+         (a:_) -> (map snd x, SExprStream p (tokenOffset a) s')
 
   showTokens Proxy = intercalate " "
     . NE.toList
@@ -159,6 +169,7 @@ sexprRule f (_, AtomToken x1) (_, AtomToken x2) = f x1 x2
 sexprRule _ _ _ = SOptional
 
 -- | To get a parser for SExpr a, use 'removeAnnotation'
+-- | Lexer does not enforce end of file
 sexprLexer :: (MonadParsec e s m) =>
                m b -> -- ^ Start delimiter 
                m c -> -- ^ End delimiter 
