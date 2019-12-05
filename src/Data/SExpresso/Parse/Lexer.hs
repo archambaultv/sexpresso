@@ -105,6 +105,7 @@ data SExprStream s b c a = SExprStream {
                       -- is empty
   tokenStream :: [SExprTokenPos b c a]
   }
+  deriving (Eq, Show)
 
 instance (Ord b, Ord c, Ord a, Show b, Show c, Show a, Stream s) => Stream (SExprStream s b c a) where
   type Token  (SExprStream s b c a) = SExprToken b c a
