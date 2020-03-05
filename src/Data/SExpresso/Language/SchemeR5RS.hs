@@ -74,6 +74,7 @@ module Data.SExpresso.Language.SchemeR5RS (
 
   ) where
 
+import Control.Monad (mzero)
 import Data.Maybe
 import Data.Proxy
 import Data.List
@@ -471,7 +472,7 @@ ureal r s = dotN <|> ureal'
   where dotN =  do
           _ <- char '.'
           if r /= R10
-          then fail "Numbers containing decimal point must be in decimal radix"
+          then label "Numbers containing decimal point must be in decimal radix" mzero
           else do
              n <- uinteger R10
              sf <- optional suffix
@@ -495,14 +496,14 @@ ureal r s = dotN <|> ureal'
             case sf of
               Just _ -> return $ SDecimal s u1 (UInteger 0) sf
               Nothing -> return $ SInteger s u1
-        
+
         rational u1 = do
           u2 <- uinteger r
           return $ SRational s u1 u2
 
         decimal u1 = do
           if r /= R10
-          then fail "Numbers containing decimal point must be in decimal radix"
+          then label "Numbers containing decimal point must be in decimal radix" mzero
           else do
              -- If u1 has # character, only other # are
              -- allowed. Otherwise a number may be present

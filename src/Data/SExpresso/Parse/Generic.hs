@@ -61,6 +61,7 @@ module Data.SExpresso.Parse.Generic
 import Data.Maybe
 import qualified Data.Map as M
 import Control.Applicative
+import Control.Monad (mzero)
 import Text.Megaparsec
 import Data.SExpresso.SExpr
 import Data.SExpresso.Parse.Location
@@ -270,8 +271,8 @@ sepEndBy1' p sep f = do
               then do
                 xs <- parseContent a2
                 return $ a2 : xs
-              else fail ("The previous two atoms are not separated by space.\n" ++
-                         "A space was expected at " ++ sourcePosPretty (fromJust mpos))
+              else label ("The previous two atoms are not separated by space.\n" <>
+                         "A space was expected at " <> sourcePosPretty (fromJust mpos)) mzero
 
 -- | The 'parseSExprList' function return a parser for parsing S-expression of the form @'SList' _ _@.
 parseSExprList :: (MonadParsec e s m) =>
