@@ -23,7 +23,7 @@ import qualified Data.Text.Lazy as L
 import qualified Data.Text.Lazy.Builder as B
 import Data.SExpresso.SExpr
 
--- | The 'SExprPrinter' defines how to print an 'SExpr'. 
+-- | The 'SExprPrinter' defines how to print an 'SExpr'.
 data SExprPrinter b a = SExprPrinter {
   -- | The opening and closing tags based on the content of the 'SList'
   printTags :: b -> [SExpr b a] -> (T.Text, T.Text),
@@ -34,7 +34,7 @@ data SExprPrinter b a = SExprPrinter {
 -- | An 'SExprPrinter' with the opening tag defined as '(' and the
 -- closing tag defined as ')'
 mkPrinter :: (a -> T.Text) -> SExprPrinter b a
-mkPrinter p = SExprParser (\_ _ -> ("(", ")")) p
+mkPrinter p = SExprPrinter (\_ _ -> ("(", ")")) p
 
 -- | Prints an 'SExpr' on a single line. Returns a 'B.Builder' instead of a lazy text 'L.Text'
 flatPrintBuilder :: SExprPrinter b a -> SExpr b a -> B.Builder
