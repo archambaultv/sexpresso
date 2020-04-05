@@ -21,7 +21,7 @@
 -- as defined in section 7 of the report
 -- The library does parse tab and \r\n and whitespace
 module Data.SExpresso.Language.SchemeR5RS (
-  -- * SchemeToken and Datum related data types and functions 
+  -- * SchemeToken and Datum related data types and functions
   SExprType(..),
   SchemeToken(..),
   tokenParser,
@@ -123,16 +123,17 @@ tokenParser = (boolean >>= return . TBoolean) <|>
               -- character must come before number
               (character >>= return . TChar) <|>
               (stringParser >>= return . TString) <|>
+              -- We must try number because it can conflict with
+              -- the dot ex : .2 and (a . b)
+              -- and identifier ex : - and -1
+              (try number >>= return . TNumber) <|>
               (identifier >>= return . TIdentifier) <|>
               (quote >> return TQuote) <|>
               (quasiquote >> return TQuasiquote) <|>
               -- commaAt must come before comma
-              (commaAt >> return TCommaAt) <|> 
+              (commaAt >> return TCommaAt) <|>
               (comma >> return TComma) <|>
-              -- We must try number because it can conflict with the dot ex : .2 and (a . b)
-              (try number >>= return . TNumber) <|>
               (dot >> return TDot)
-              
 
 
 spacingRule :: SchemeToken -> SpacingRule
@@ -423,7 +424,7 @@ number = do
   c <- complex (fromMaybe R10 r)
   let e' = fromMaybe (if isInexact c then Inexact else Exact) e
   return $ SchemeNumber e'  c
- 
+
 complex :: forall e s m . (MonadParsec e s m, Token s ~ Char) => Radix -> m Complex
 complex r = do
   ms <- optional sign
@@ -453,7 +454,7 @@ complex r = do
           -- Real +/- Imaginary number
           Just '+' -> imaginaryPart n1 Plus
           Just _ -> imaginaryPart n1 Minus
-  
+
     imaginaryPart realN si = do
       u <- optional (ureal r si)
       _ <- char 'i'
@@ -527,7 +528,7 @@ uinteger r = do
   if nbPounds <= 0
   then return $ UInteger n
   else return $ UIntPounds n nbPounds
-  
+
 
 prefix :: (MonadParsec e s m, Token s ~ Char) => m (Maybe Radix, Maybe Exactness)
 prefix = do
@@ -548,14 +549,14 @@ prefix = do
 exactness :: forall e s m . (MonadParsec e s m, Token s ~ Char) => m Exactness
 exactness = (chunk (tokensToChunk (Proxy :: Proxy s) "#e") >> return Exact) <|>
             (chunk (tokensToChunk (Proxy :: Proxy s) "#i") >> return Inexact)
-  
+
 radix :: forall e s m . (MonadParsec e s m, Token s ~ Char) => m  Radix
 radix =
   (chunk (tokensToChunk (Proxy :: Proxy s) "#b") >> return R2) <|>
   (chunk (tokensToChunk (Proxy :: Proxy s) "#o") >> return R8) <|>
   (chunk (tokensToChunk (Proxy :: Proxy s) "#d") >> return R10) <|>
   (chunk (tokensToChunk (Proxy :: Proxy s) "#x") >> return R16)
-  
+
 udigit :: forall e s m a . (MonadParsec e s m, Token s ~ Char, Integral a) => Radix -> m a
 udigit r = do
   case r of
@@ -566,7 +567,7 @@ udigit r = do
   where hexadecimal = mkNum
                       <$> takeWhile1P Nothing (\c -> c `elem` ("0123456789abcdef" :: String))
                       <?> "hexadecimal integer"
-                      
+
         mkNum    = foldl' step 0 . chunkToTokens (Proxy :: Proxy s)
         step a c = a * 16 + fromIntegral (C.digitToInt c)
 

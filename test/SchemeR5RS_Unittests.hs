@@ -24,7 +24,7 @@ pSExpr = decode R5.sexpr
 -- tparse parses the whole input
 tparse :: Parser a -> T.Text -> Either String a
 tparse p s = first errorBundlePretty $ parse (p <* eof) "" s
-  
+
 r5rsTestTree :: TestTree
 r5rsTestTree = testGroup "Language/R5RS.hs" $ [
   testGroup "whitespace" $ [
@@ -135,13 +135,13 @@ r5rsTestTree = testGroup "Language/R5RS.hs" $ [
       let s = "1" in testCase (show s) $ tparse R5.number s @?= (Right $ SchemeNumber Exact $
                       CReal (SInteger Plus (UInteger 1))),
 
-      
+
       let s = "#e1" in testCase (show s) $ tparse R5.number s @?= (Right $ SchemeNumber Exact $
                       CReal (SInteger Plus (UInteger 1))),
-        
+
       let s = "#i1" in testCase (show s) $ tparse R5.number s @?= (Right $ SchemeNumber Inexact $
                       CReal (SInteger Plus (UInteger 1))),
-        
+
       let s = "#b1" in testCase (show s) $ tparse R5.number s @?= (Right $ SchemeNumber Exact $
                       CReal (SInteger Plus (UInteger 1))),
       let s = "#o1" in testCase (show s) $ tparse R5.number s @?= (Right $ SchemeNumber Exact $
@@ -214,7 +214,7 @@ r5rsTestTree = testGroup "Language/R5RS.hs" $ [
                       CReal (SDecimal Plus (UInteger 0) (UInteger 0) Nothing)),
       let s = "0." in testCase (show s) $ tparse R5.number s @?= (Right $ SchemeNumber Inexact $
                       CReal (SDecimal Plus (UInteger 0) (UInteger 0) Nothing)),
-        
+
       let s = "0.###" in testCase (show s) $ tparse R5.number s @?= (Right $ SchemeNumber Inexact $
                       CReal (SDecimal Plus (UInteger 0) (UPounds 3) Nothing)),
       let s = "-.569" in testCase (show s) $ tparse R5.number s @?= (Right $ SchemeNumber Inexact $
@@ -247,10 +247,10 @@ r5rsTestTree = testGroup "Language/R5RS.hs" $ [
                       CReal (SDecimal Plus (UInteger 1)
                                                          (UInteger 0)
                                                          (Just $ Suffix PLong Plus 10))),
-        
+
       let s = "1+i" in testCase (show s) $ tparse R5.number s @?= (Right $ SchemeNumber Exact $
                       CAbsolute (SInteger Plus (UInteger 1)) (SInteger Plus (UInteger 1))),
-        
+
       let s = "1-i" in testCase (show s) $ tparse R5.number s @?= (Right $ SchemeNumber Exact $
                       CAbsolute (SInteger Plus (UInteger 1)) (SInteger Minus (UInteger 1))),
 
@@ -258,11 +258,11 @@ r5rsTestTree = testGroup "Language/R5RS.hs" $ [
                       CAbsolute (SDecimal Plus (UInteger 0)
                                                     (UInteger 5)
                                                     Nothing) (SInteger Plus (UInteger 1))),
-                                                                     
+
       let s = "-8i" in testCase (show s) $ tparse R5.number s @?= (Right $ SchemeNumber Exact $
                       CAbsolute (SInteger Plus (UInteger 0)) (SInteger Minus (UInteger 8))),
 
-      
+
       let s = "-8.25i" in testCase (show s) $ tparse R5.number s @?= (Right $ SchemeNumber Inexact $
                       CAbsolute (SInteger Plus (UInteger 0)) (SDecimal Minus (UInteger 8)
                                                                                       (UInteger 25)
@@ -280,14 +280,14 @@ r5rsTestTree = testGroup "Language/R5RS.hs" $ [
       let s = "#o9" in testCase (show s) $ (isLeft $ tparse R5.number s) @? "Parsing must fail on #o9",
       let s = "#da" in testCase (show s) $ (isLeft $ tparse R5.number s) @? "Parsing must fail on #da",
       let s = "#xA" in testCase (show s) $ (isLeft $ tparse R5.number s) @? "Parsing must fail on #xA",
-      
+
       let s = "#b1.1" in testCase (show s) $ (isLeft $ tparse R5.number s) @? "Parsing must fail on #b1.1",
       let s = "#o1.1" in testCase (show s) $ (isLeft $ tparse R5.number s) @? "Parsing must fail on #o1.1",
       let s = "#x1.1" in testCase (show s) $ (isLeft $ tparse R5.number s) @? "Parsing must fail on #x1.1",
       let s = "#b.1" in testCase (show s) $ (isLeft $ tparse R5.number s) @? "Parsing must fail on #b.1",
       let s = "#o.1" in testCase (show s) $ (isLeft $ tparse R5.number s) @? "Parsing must fail on #o.1",
       let s = "#x.1" in testCase (show s) $ (isLeft $ tparse R5.number s) @? "Parsing must fail on #x.1",
-      
+
       let s = "123##.12" in testCase (show s) $ (isLeft $ tparse R5.number s) @? "Parsing must fail on 123##.12",
       let s = "#" in testCase (show s) $ (isLeft $ tparse R5.number s) @? "Parsing must fail on #",
       let s = "#t" in testCase (show s) $ (isLeft $ tparse R5.number s) @? "Parsing must fail on #t",
@@ -296,14 +296,15 @@ r5rsTestTree = testGroup "Language/R5RS.hs" $ [
     testGroup "datum" $ [
       let s = "1" in testCase (show s) $ (tparse pSExpr s >>= sexpr2Datum) @?=
                      (Right $ [DNumber (SchemeNumber Exact (CReal (SInteger Plus (UInteger 1))))]),
-        
+      let s = "-1" in testCase (show s) $ (tparse pSExpr s >>= sexpr2Datum) @?=
+                     (Right $ [DNumber (SchemeNumber Exact (CReal (SInteger Minus (UInteger 1))))]),
       let s = "foo" in testCase (show s) $ (tparse pSExpr s >>= sexpr2Datum) @?=
                      (Right $ [DIdentifier "foo"]),
       let s = "(foo #\\a)" in testCase (show s) $ (tparse pSExpr s >>= sexpr2Datum) @?=
                      (Right $ [DList [DIdentifier "foo", DChar 'a']]),
       let s = "(foo #\\a) \"hello\"" in testCase (show s) $ (tparse pSExpr s >>= sexpr2Datum) @?=
                      (Right $ [DList [DIdentifier "foo", DChar 'a'], DString "hello"]),
-        
+
       let s = "'foo" in testCase (show s) $ (tparse pSExpr s >>= sexpr2Datum) @?=
                      (Right $ [DQuote (DIdentifier "foo")]),
       let s = "`foo" in testCase (show s) $ (tparse pSExpr s >>= sexpr2Datum) @?=
