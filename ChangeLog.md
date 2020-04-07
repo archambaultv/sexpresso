@@ -9,6 +9,8 @@ Version 1.1.0.0
 * Add Functor instance for Located
 * Fix SExprPrinter constructor name (SExprParser -> SExprPrinter)
 * Improve documentation
+* Merge [pull request \#6](https://github.com/archambaultv/sexpresso/pull/6) to prepare for MonadFail
+* Fix bug with R5RS negative number (issue \#7 on [github](https://github.com/archambaultv/sexpresso/issues/7))
 
 Version 1.0.0.2
 ---------------
