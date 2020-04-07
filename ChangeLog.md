@@ -11,6 +11,7 @@ Version 1.1.0.0
 * Improve documentation
 * Merge [pull request \#6](https://github.com/archambaultv/sexpresso/pull/6) to prepare for MonadFail
 * Fix bug with R5RS negative number (issue \#7 on [github](https://github.com/archambaultv/sexpresso/issues/7))
+* Tested with stack version 14.27 and 15.3
 
 Version 1.0.0.2
 ---------------
