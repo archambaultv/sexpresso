@@ -42,7 +42,7 @@ data Located a = At Location a
                deriving (Eq, Ord, Show, Functor)
 
 -- | The 'located' function adds a source span to a parser.
-located :: (MonadParsec e s m) => m a -> m (Located a)
+located :: (MonadParsec e s m, TraversableStream s) => m a -> m (Located a)
 located parser = do
   begin <- getSourcePos
   result <- parser

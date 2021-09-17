@@ -109,7 +109,7 @@ getAtom :: SExprParser m b a -> m a
 getAtom (SExprParser _ _ a _ _) = a
 
 -- | The 'withLocation' function adds source location to a @'SExprParser'@. See also 'Location'.
-withLocation :: (MonadParsec e s m) => SExprParser m b a -> SExprParser m (Located b) (Located a)
+withLocation :: (MonadParsec e s m, TraversableStream s) => SExprParser m b a -> SExprParser m (Located b) (Located a)
 withLocation (SExprParser pSTag pETag atom sp sr) =
   let s = do
         pos <- getSourcePos
@@ -251,10 +251,10 @@ spaceIsOK getSpacingRule' sexp1 sexp2 spaceInBetween =
     (_, SList _ _, _) -> True
     (SAtom a1, SAtom a2, _) -> getSpacingRule' a1 a2 == SOptional
 
-sepEndBy' :: (MonadParsec e s m) => m (SExpr b a) -> m () -> (a -> a -> SpacingRule) -> m [SExpr b a]
+sepEndBy' :: (MonadParsec e s m, TraversableStream s) => m (SExpr b a) -> m () -> (a -> a -> SpacingRule) -> m [SExpr b a]
 sepEndBy' p sep f = sepEndBy1' p sep f <|> pure []
 
-sepEndBy1' :: (MonadParsec e s m) => m (SExpr b a) -> m () -> (a -> a -> SpacingRule) -> m [SExpr b a]
+sepEndBy1' :: (MonadParsec e s m, TraversableStream s) => m (SExpr b a) -> m () -> (a -> a -> SpacingRule) -> m [SExpr b a]
 sepEndBy1' p sep f = do
   x <- p
   xs <- parseContent x
@@ -275,7 +275,7 @@ sepEndBy1' p sep f = do
                          "A space was expected at " <> sourcePosPretty (fromJust mpos)) mzero
 
 -- | The 'parseSExprList' function return a parser for parsing S-expression of the form @'SList' _ _@.
-parseSExprList :: (MonadParsec e s m) =>
+parseSExprList :: (MonadParsec e s m, TraversableStream s) =>
                 SExprParser m b a -> m (SExpr b a)
 parseSExprList def@(SExprParser pSTag pETag _ sp sr)  = do
           c <- pSTag
@@ -287,7 +287,7 @@ parseSExprList def@(SExprParser pSTag pETag _ sp sr)  = do
 -- | The 'parseSExpr' function return a parser for parsing
 -- S-expression ('SExpr'), that is either an atom (@'SAtom' _@) or a
 -- list @'SList' _ _@. See also 'decodeOne' and 'decode'.
-parseSExpr :: (MonadParsec e s m) =>
+parseSExpr :: (MonadParsec e s m, TraversableStream s) =>
               SExprParser m b a -> m (SExpr b a)
 parseSExpr def = (getAtom def >>= return . SAtom) <|> (parseSExprList def)
 
@@ -295,7 +295,7 @@ parseSExpr def = (getAtom def >>= return . SAtom) <|> (parseSExprList def)
 -- containing only one S-expression ('SExpr'). It can parse extra
 -- whitespace at the beginning and at the end of the file. See also
 -- 'parseSExpr' and 'decode'.
-decodeOne :: (MonadParsec e s m) => SExprParser m b a -> m (SExpr b a)
+decodeOne :: (MonadParsec e s m, TraversableStream s) => SExprParser m b a -> m (SExpr b a)
 decodeOne def =
   let ws = getSpace def
   in optional ws *> parseSExpr def <* (optional ws >> eof)
@@ -304,7 +304,7 @@ decodeOne def =
 -- containing many S-expression ('SExpr'). It can parse extra
 -- whitespace at the beginning and at the end of the file. See also
 -- 'parseSExpr' and 'decodeOne'.
-decode :: (MonadParsec e s m) => SExprParser m b a -> m [SExpr b a]
+decode :: (MonadParsec e s m, TraversableStream s) => SExprParser m b a -> m [SExpr b a]
 decode def =
   let ws = getSpace def
   in optional ws *> sepEndBy' (parseSExpr def) ws (getSpacingRule def) <* eof
