@@ -1,6 +1,10 @@
 [![License OBSD](https://img.shields.io/badge/license-0BSD-brightgreen.svg)](https://opensource.org/licenses/0BSD)
 [![Hackage](https://img.shields.io/hackage/v/sexpresso.svg)](http://hackage.haskell.org/package/sexpresso)
 
+# S-expresso is now in passive maintenance
+I will try my best to fix new issues or merge new pull requests, but I do not work on this project anymore.
+Expect some delay before I reply. If you wish to take over the project please contact me.
+
 # S-expresso
 
 S-expresso is a Haskell library designed to help you parse and print
