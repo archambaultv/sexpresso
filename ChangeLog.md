@@ -1,5 +1,10 @@
 # Changelog for S-expresso
 
+Version 1.2.0.0
+---------------
+* Update to stack lts 18.10
+* Thanks to Ollie Charles from asking for this update
+
 Version 1.1.0.0
 ---------------
 
