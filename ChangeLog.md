@@ -1,5 +1,9 @@
 # Changelog for S-expresso
 
+Version 1.2.1.0
+---------------
+* Add `Data` instances. [#12](https://github.com/archambaultv/sexpresso/pull/12).
+
 Version 1.2.0.0
 ---------------
 * Update to stack lts 18.10
