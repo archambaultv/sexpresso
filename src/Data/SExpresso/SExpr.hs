@@ -13,7 +13,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE DeriveFunctor, DeriveFoldable, DeriveTraversable #-}
+{-# LANGUAGE DeriveFunctor, DeriveFoldable, DeriveTraversable, DeriveDataTypeable #-}
 
 
 module Data.SExpresso.SExpr
@@ -33,6 +33,7 @@ module Data.SExpresso.SExpr
   where
 
 import Data.Bifunctor.TH
+import Data.Data
 import Data.Functor.Foldable.TH
 
 -- | The datatype 'SExpr' is the definition of an S-expression for the
@@ -43,7 +44,7 @@ import Data.Functor.Foldable.TH
 -- like source position for example.
 data SExpr b a = SList b [SExpr b a]
                | SAtom a
-               deriving (Eq, Show, Functor, Traversable, Foldable)
+               deriving (Eq, Show, Functor, Traversable, Foldable, Data)
 
 $(deriveBifunctor ''SExpr)
 $(deriveBifoldable ''SExpr)

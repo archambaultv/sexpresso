@@ -13,6 +13,7 @@
 -- R5RS datum (see 'Datum') by the function 'sexpr2Datum'.
 
 
+{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -75,6 +76,7 @@ module Data.SExpresso.Language.SchemeR5RS (
   ) where
 
 import Control.Monad (mzero)
+import Data.Data
 import Data.Maybe
 import Data.Proxy
 import Data.List
@@ -115,7 +117,7 @@ data SchemeToken =
   | TCommaAt
   -- | The dot (.) symbol.
   | TDot
-  deriving (Eq, Show)
+  deriving (Eq, Show, Data)
 
 -- | The 'tokenParser' parses a 'SchemeToken'
 tokenParser :: (MonadParsec e s m, Token s ~ Char) => m SchemeToken
@@ -152,7 +154,7 @@ data SExprType =
   STList
   -- | A vector
   | STVector
-  deriving (Eq, Show)
+  deriving (Eq, Show, Data)
 
 -- | The 'sexpr' defines a 'SExprParser' to parse a Scheme R5RS
 -- s-expression as an @'SExpr' 'SExprType' 'SchemeToken'@. If you also
@@ -184,7 +186,7 @@ data Datum = DBoolean Bool
            | DComma Datum
            | DCommaAt Datum
            | DVector [Datum]
-           deriving (Eq, Show)
+           deriving (Eq, Show, Data)
 
 -- | The 'sexpr2Datum' function takes a list of 'SchemeToken' and
 -- returns a list of 'Datum'. In case of failure it will report an
@@ -310,7 +312,7 @@ stringParser = do
 
 ------------------------- Numbers -------------------------
 data Radix = R2 | R8 | R10 | R16
-           deriving (Eq, Show)
+           deriving (Eq, Show, Data)
 
 -- | A Scheme R5RS number is either exact or inexact. The paragraph
 -- 6.4.2 from the R5RS report should clarify the meaning of exact and
@@ -325,11 +327,11 @@ data Radix = R2 | R8 | R10 | R16
 -- exponent, or a \“#\” character in the place of a digit, otherwise it
 -- is exact.\"\"\"
 data Exactness = Exact | Inexact
-               deriving (Eq, Show)
+               deriving (Eq, Show, Data)
 
 -- | The 'Sign' datatype indicates if a number is positive ('Plus') or negative ('Minus')
 data Sign = Plus | Minus
-          deriving (Eq, Show)
+          deriving (Eq, Show, Data)
 
 -- | A Scheme R5RS number can have many # signs at the end. This type alias
 -- indicates the number of # signs parsed.
@@ -351,7 +353,7 @@ data UInteger =
   | UIntPounds Integer Pounds
   -- | Integer made only of #. It can only appear as the third argument in numbers of the form @'SDecimal' _ _ _ _@.
   | UPounds Pounds
-  deriving (Eq, Show)
+  deriving (Eq, Show, Data)
 
 hasPounds :: UInteger -> Bool
 hasPounds (UInteger _) = False
@@ -374,12 +376,12 @@ data Precision =
   PDouble |
   -- | Suffix starting with l.
   PLong
-  deriving (Eq, Show)
+  deriving (Eq, Show, Data)
 
 -- | The 'Suffix' data type represents the suffix for a Scheme R5RS
 -- decimal number. It is a based 10 exponent.
 data Suffix = Suffix Precision Sign Integer
-            deriving (Eq, Show)
+            deriving (Eq, Show, Data)
 
 -- | The 'SReal' data type represents a Scheme R5RS real number.
 data SReal =
@@ -391,7 +393,7 @@ data SReal =
   -- | A signed decimal number. The first number appears before the
   -- dot, the second one after the dot.
   | SDecimal Sign UInteger UInteger (Maybe Suffix)
-  deriving (Eq, Show)
+  deriving (Eq, Show, Data)
 
 isInexactR :: SReal -> Bool
 isInexactR (SInteger _ i) = isInexactI i
@@ -406,7 +408,7 @@ data Complex =
   | CAngle SReal SReal
   -- | A complex number in absolute notation.
   | CAbsolute SReal SReal
-  deriving (Eq, Show)
+  deriving (Eq, Show, Data)
 
 isInexact :: Complex -> Bool
 isInexact (CReal s) = isInexactR s
@@ -415,7 +417,7 @@ isInexact (CAbsolute s1 s2) = isInexactR s1 || isInexactR s2
 
 -- | A Scheme R5RS number is an exact or inexact complex number.
 data SchemeNumber = SchemeNumber Exactness Complex
-                  deriving (Eq, Show)
+                  deriving (Eq, Show, Data)
 
 -- | The 'number' parser parses a Scheme R5RS number.
 number :: (MonadParsec e s m, Token s ~ Char) => m SchemeNumber
