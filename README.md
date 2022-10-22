@@ -100,11 +100,11 @@ will create a parser where S-expression starts with "(", ends with ")"
 and space is mandatory between atoms.
 
 ~~~haskell
-Import Data.Void
-Import qualified Data.Text as T
-Import Text.Megaparsec
-Import Text.Megaparsec.Char
-Import qualified Text.Megaparser.Char.Lexer as L
+import Data.Void
+import qualified Data.Text as T
+import Text.Megaparsec
+import Text.Megaparsec.Char
+import qualified Text.Megaparsec.Char.Lexer as L
 
 atom = some letter
 
