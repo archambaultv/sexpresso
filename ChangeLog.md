@@ -1,5 +1,9 @@
 # Changelog for S-expresso
 
+Version 1.2.2.0
+---------------
+* Build with `megaparsec-9.3.0`
+
 Version 1.2.1.0
 ---------------
 * Add `Data` instances. [#12](https://github.com/archambaultv/sexpresso/pull/12).
