@@ -1,5 +1,9 @@
 # Changelog for S-expresso
 
+Version 1.2.3.0
+---------------
+* Build with `text-2.0`
+
 Version 1.2.2.0
 ---------------
 * Build with `megaparsec-9.3.0`
