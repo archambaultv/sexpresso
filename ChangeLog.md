@@ -1,5 +1,9 @@
 # Changelog for S-expresso
 
+Version 1.2.4.0
+---------------
+* Build with `bifunctors-5.6`
+
 Version 1.2.3.0
 ---------------
 * Build with `text-2.0`
