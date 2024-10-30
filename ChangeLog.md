@@ -1,5 +1,9 @@
 # Changelog for S-expresso
 
+Version 1.2.5.0
+---------------
+* Relax upperbounds.
+
 Version 1.2.4.0
 ---------------
 * Build with `bifunctors-5.6`
