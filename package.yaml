@@ -21,9 +21,9 @@ description:         Please see the README on GitHub at <https://github.com/arch
 
 dependencies:
 - base >= 4.7 && < 5
-- text >= 0.2 && < 2.1
-- megaparsec >= 7.0 && < 9.4.0
-- containers >= 0.5 && < 0.7
+- text >= 0.2 && < 2.2
+- megaparsec >= 7.0 && < 9.7
+- containers >= 0.5 && < 0.8
 - bifunctors >= 5.5 && < 5.7
 - recursion-schemes >= 5.1 && < 5.3
 
